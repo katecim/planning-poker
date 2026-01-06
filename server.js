@@ -64,6 +64,11 @@ io.on('connection', (socket) => {
         
         io.emit('update', gameState);
     });
+
+    // Handle Emoji Reactions
+    socket.on('reaction', (emoji) => {
+        io.emit('reaction', emoji);
+    });
 });
 
 const PORT = 3000;

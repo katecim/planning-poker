@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forest Gopher Poker</title>
+    <title>Gopher Poker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -14,17 +14,17 @@
 
     <div class="container">
         <div id="login-screen">
-            <h1>🎄 Gopher Poker 🦫</h1>
+            <h1>Gopher Poker</h1>
             <p style="margin-bottom: 25px; opacity: 0.8;">Enter and start planning.</p>
             <input type="text" id="username" placeholder="What's your name?" autocomplete="off"/>
             <br>
-            <button onclick="joinGame()">Enter Session 🎁</button>
+            <button onclick="joinGame()">Enter Session 🏆</button>
         </div>
 
         <div id="game-screen" class="hidden">
             <div class="header">
                 <div>
-                     <h2 style="margin-bottom: 5px;">🎄 Planning Session</h2>
+                     <h2 style="margin-bottom: 5px;">Planning Session</h2>
                      <h3 id="session-status">Voting in progress...</h3>
                 </div>
                
@@ -42,11 +42,21 @@
             </div>
 
             <div class="participants">
-                <h3>🎁 Participants</h3>
+                <h3>Participants</h3>
                 <ul id="user-list"></ul>
             </div>
         </div>
     </div>
+
+    
+    <div class="reaction-bar">
+        <button class="reaction-btn" onclick="sendReaction('🎉', event)">🎉</button>
+        <button class="reaction-btn" onclick="sendReaction('💯', event)">💯</button>
+        <button class="reaction-btn" onclick="sendReaction('🙅‍♀️', event)">🙅‍♀️</button>
+        <button class="reaction-btn" onclick="sendReaction('☕', event)">☕</button>
+</div>
+    
+    <div id="floating-container"></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -115,7 +125,7 @@
         state.users.forEach(u => {
             const li = document.createElement('li');
             
-            let voteDisplay = u.vote === null ? '...' : '🌲'; 
+            let voteDisplay = u.vote === null ? '...' : '✔️'; 
             if (state.revealed) {
                 voteDisplay = u.vote === null ? '-' : u.vote;
                 if (typeof u.vote === 'number') {
@@ -149,6 +159,43 @@
             document.getElementById('session-status').innerText = "Voting in progress...";
             document.getElementById('session-status').style.color = "rgba(255,255,255,0.7)";
         }
+    });
+
+    // 1. Send Reaction with Position Data
+    function sendReaction(emoji, event) {
+        // Calculate the button's center position relative to the screen width
+        const rect = event.target.getBoundingClientRect();
+        const centerX = rect.left + (rect.width / 2);
+        
+        // Convert to percentage (0% to 100%) so it works on different screen sizes
+        const xPercent = (centerX / window.innerWidth) * 100;
+        
+        socket.emit('reaction', { emoji, x: xPercent });
+    }
+
+    // 2. Receive and Animate
+    socket.on('reaction', (data) => {
+        const emojiChar = data.emoji || data; 
+        const xPos = data.x || 90;
+
+        const container = document.body;
+        const el = document.createElement('div');
+        el.innerText = emojiChar;
+        el.className = 'floater';
+        
+        // --- CHANGE IS HERE ---
+        // Reduced randomness from 4 to 1. 
+        // This creates a much tighter stream (0.5% spread instead of 2%)
+        const randomOffset = (Math.random() * 1) - 0.5; 
+        
+        el.style.left = (xPos + randomOffset) + '%'; 
+        el.style.bottom = '80px'; 
+
+        container.appendChild(el);
+
+        setTimeout(() => {
+            el.remove();
+        }, 4000);
     });
 </script>
 </body>
