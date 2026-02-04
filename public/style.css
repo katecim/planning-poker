@@ -1,9 +1,8 @@
 :root {
-    /* Forest & Modern Palette */
-    --primary-color: #4ade80; /* Vibrant Fern Green */
+    --primary-color: #4ade80;
     --primary-hover: #22c55e;
-    --secondary-color: #f59e0b; /* Amber/Gold for Reset */
-    --bg-overlay: rgba(17, 24, 39, 0.75); /* Dark frosted glass base */
+    --secondary-color: #f59e0b;
+    --bg-overlay: rgba(17, 24, 39, 0.75);
     --card-bg: rgba(255, 255, 255, 0.9);
     --text-light: #f3f4f6;
     --text-dark: #1f2937;
@@ -12,8 +11,7 @@
 
 body {
     font-family: var(--font-stack);
-    /* Placeholder Forest Image - Replace url('...') with your local gopher image path if desired */
-    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1514876246314-d9a231ea21db?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('./assets/images/casino-table.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gopher Poker</title>
+    <title>Gopher Planning Poker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 
     <div class="container">
         <div id="login-screen">
-            <h1>Gopher Poker</h1>
+            <h1>Gopher Planning Poker</h1>
             <p style="margin-bottom: 25px; opacity: 0.8;">Enter and start planning.</p>
             <input type="text" id="username" placeholder="What's your name?" autocomplete="off"/>
             <br>
@@ -60,143 +60,161 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-    const socket = io();
-    let myId = null;
-    
-    const cards = [1, 2, 3, 5, 8, 13, '🦫'];
+        const socket = io();
+        let myId = null;
+        const cards = [1, 2, 3, 5, 8, 13, '🦫'];
 
-    function joinGame() {
-        const name = document.getElementById('username').value;
-        if (!name) return alert("Please enter a name");
-        
-        socket.emit('join', name);
-        
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('game-screen').classList.remove('hidden');
-        
-        renderDeck();
-    }
+        // --- SESSION PERSISTENCE HELPERS ---
+        function getPersistentId() {
+            let id = localStorage.getItem('poker_user_id');
+            if (!id) {
+                id = 'user_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('poker_user_id', id);
+            }
+            return id;
+        }
 
-    function renderDeck() {
-        const deckDiv = document.getElementById('deck');
-        deckDiv.innerHTML = '';
-        cards.forEach(val => {
-            const btn = document.createElement('button');
-            btn.className = 'card';
-            // We add a data-value attribute so we can easily find this card later
-            btn.setAttribute('data-value', val); 
-            btn.innerHTML = typeof val === 'string' ? `<span>${val}</span>` : val;
+        function joinGame() {
+            const name = document.getElementById('username').value;
+            if (!name) return alert("Please enter a name");
             
-            btn.onclick = () => {
-                // Visual feedback immediately on click
+            const persistentId = getPersistentId();
+            localStorage.setItem('poker_username', name);
+
+            // Send persistent identity to server
+            socket.emit('join', { name, persistentId });
+            
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            renderDeck();
+        }
+
+        // Auto-rejoin on refresh if we have a saved name
+        window.onload = () => {
+            const savedName = localStorage.getItem('poker_username');
+            if (savedName) {
+                document.getElementById('username').value = savedName;
+                joinGame();
+            }
+        };
+
+        function renderDeck() {
+            const deckDiv = document.getElementById('deck');
+            deckDiv.innerHTML = '';
+            cards.forEach(val => {
+                const btn = document.createElement('button');
+                btn.className = 'card';
+                // We add a data-value attribute so we can easily find this card later
+                btn.setAttribute('data-value', val); 
+                btn.innerHTML = typeof val === 'string' ? `<span>${val}</span>` : val;
+                
+                btn.onclick = () => {
+                    // Visual feedback immediately on click
+                    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    socket.emit('vote', val);
+                };
+                deckDiv.appendChild(btn);
+            });
+        }
+
+        function revealCards() { socket.emit('reveal'); }
+        
+        function resetGame() { 
+            socket.emit('reset'); 
+        }
+
+        socket.on('update', (state) => {
+            // Get your persistent ID from storage to identify yourself
+            const myPersistentId = localStorage.getItem('poker_user_id');
+            const userList = document.getElementById('user-list');
+            userList.innerHTML = '';
+            
+            let total = 0;
+            let count = 0;
+
+            // 1. Find yourself in the state using persistentId instead of socket.id
+            const me = state.users.find(u => u.persistentId === myPersistentId);
+
+            // 2. SYNC DECK SELECTION
+            if (me && me.vote === null) {
                 document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
-                btn.classList.add('selected');
-                socket.emit('vote', val);
-            };
-            deckDiv.appendChild(btn);
-        });
-    }
+            }
 
-    function revealCards() { socket.emit('reveal'); }
-    
-    function resetGame() { 
-        socket.emit('reset'); 
-        // Note: We removed the manual deselect here because the socket.on('update') 
-        // below will now handle it for everyone, including the admin.
-    }
-
-    socket.on('update', (state) => {
-        myId = socket.id;
-        const userList = document.getElementById('user-list');
-        userList.innerHTML = '';
-        
-        let total = 0;
-        let count = 0;
-
-        // 1. Find myself to check my vote status
-        const me = state.users.find(u => u.id === myId);
-
-        // 2. SYNC DECK SELECTION (The Fix)
-        // If the server says I have no vote (e.g., after a Reset), remove all highlights.
-        if (me && me.vote === null) {
-             document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
-        }
-
-        state.users.forEach(u => {
-            const li = document.createElement('li');
-            
-            let voteDisplay = u.vote === null ? '...' : '✔️'; 
-            if (state.revealed) {
-                voteDisplay = u.vote === null ? '-' : u.vote;
-                if (typeof u.vote === 'number') {
-                    total += u.vote;
-                    count++;
+            state.users.forEach(u => {
+                const li = document.createElement('li');
+                
+                let voteDisplay = u.vote === null ? '...' : '✔️'; 
+                if (state.revealed) {
+                    voteDisplay = u.vote === null ? '-' : u.vote;
+                    if (typeof u.vote === 'number') {
+                        total += u.vote;
+                        count++;
+                    }
                 }
-            }
 
-            const adminBadge = u.isAdmin ? '<span class="admin-badge">Guide</span>' : '';
-            li.innerHTML = `
-                <span class="name">${u.name} ${adminBadge}</span>
-                <span class="vote ${state.revealed ? 'revealed' : ''}">${voteDisplay}</span>
-            `;
-            userList.appendChild(li);
+                const adminBadge = u.isAdmin ? '<span class="admin-badge">Guide</span>' : '';
+                li.innerHTML = `
+                    <span class="name">${u.name} ${adminBadge}</span>
+                    <span class="vote ${state.revealed ? 'revealed' : ''}">${voteDisplay}</span>
+                `;
+                userList.appendChild(li);
 
-            if (u.id === myId && u.isAdmin) {
-                document.getElementById('admin-controls').classList.remove('hidden');
+                // Check if THIS user in the loop is ME and if I am the ADMIN
+                if (u.persistentId === myPersistentId && u.isAdmin) {
+                    document.getElementById('admin-controls').classList.remove('hidden');
+                }
+            });
+
+            // Update Results UI
+            const resultsDiv = document.getElementById('results');
+            
+            if (state.revealed) {
+                resultsDiv.classList.remove('hidden');
+                const avg = count > 0 ? (total / count).toFixed(1) : 0;
+                document.getElementById('average-score').innerText = avg;
+                document.getElementById('session-status').innerText = "Votes Revealed!";
+                document.getElementById('session-status').style.color = "var(--primary-color)";
+            } else {
+                resultsDiv.classList.add('hidden');
+                document.getElementById('session-status').innerText = "Voting in progress...";
+                document.getElementById('session-status').style.color = "rgba(255,255,255,0.7)";
             }
         });
 
-        const resultsDiv = document.getElementById('results');
-        
-        if (state.revealed) {
-            resultsDiv.classList.remove('hidden');
-            const avg = count > 0 ? (total / count).toFixed(1) : 0;
-            document.getElementById('average-score').innerText = avg;
-            document.getElementById('session-status').innerText = "Votes Revealed!";
-            document.getElementById('session-status').style.color = "var(--primary-color)";
-        } else {
-            resultsDiv.classList.add('hidden');
-            document.getElementById('session-status').innerText = "Voting in progress...";
-            document.getElementById('session-status').style.color = "rgba(255,255,255,0.7)";
+        // 1. Send Reaction with Position Data
+        function sendReaction(emoji, event) {
+            // Calculate the button's center position relative to the screen width
+            const rect = event.target.getBoundingClientRect();
+            const centerX = rect.left + (rect.width / 2);
+            
+            // Convert to percentage (0% to 100%) so it works on different screen sizes
+            const xPercent = (centerX / window.innerWidth) * 100;
+            
+            socket.emit('reaction', { emoji, x: xPercent });
         }
-    });
 
-    // 1. Send Reaction with Position Data
-    function sendReaction(emoji, event) {
-        // Calculate the button's center position relative to the screen width
-        const rect = event.target.getBoundingClientRect();
-        const centerX = rect.left + (rect.width / 2);
-        
-        // Convert to percentage (0% to 100%) so it works on different screen sizes
-        const xPercent = (centerX / window.innerWidth) * 100;
-        
-        socket.emit('reaction', { emoji, x: xPercent });
-    }
+        // 2. Receive and Animate
+        socket.on('reaction', (data) => {
+            const emojiChar = data.emoji || data; 
+            const xPos = data.x || 90;
 
-    // 2. Receive and Animate
-    socket.on('reaction', (data) => {
-        const emojiChar = data.emoji || data; 
-        const xPos = data.x || 90;
+            const container = document.body;
+            const el = document.createElement('div');
+            el.innerText = emojiChar;
+            el.className = 'floater';
+            
+            const randomOffset = (Math.random() * 1) - 0.5; 
+            
+            el.style.left = (xPos + randomOffset) + '%'; 
+            el.style.bottom = '80px'; 
 
-        const container = document.body;
-        const el = document.createElement('div');
-        el.innerText = emojiChar;
-        el.className = 'floater';
-        
-        // --- CHANGE IS HERE ---
-        // Reduced randomness from 4 to 1. 
-        // This creates a much tighter stream (0.5% spread instead of 2%)
-        const randomOffset = (Math.random() * 1) - 0.5; 
-        
-        el.style.left = (xPos + randomOffset) + '%'; 
-        el.style.bottom = '80px'; 
+            container.appendChild(el);
 
-        container.appendChild(el);
-
-        setTimeout(() => {
-            el.remove();
-        }, 4000);
-    });
-</script>
+            setTimeout(() => {
+                el.remove();
+            }, 4000);
+        });
+    </script>
 </body>
 </html>

@@ -10,24 +10,33 @@ app.use(express.static('public'));
 
 // Game State
 let gameState = {
-    users: [], // { id: 'socketId', name: 'User', vote: null, isAdmin: boolean }
+    users: [], // { persistentId: 'uuid', socketId: 'sid', name: 'User', vote: null, isAdmin: boolean }
     revealed: false
 };
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
+    // Handle User Join (Modified for Persistence)
+    socket.on('join', ({ name, persistentId }) => {
+        // Check if this user already exists in the session
+        let user = gameState.users.find(u => u.persistentId === persistentId);
 
-    // Handle User Join
-    socket.on('join', (name) => {
-        const isAdmin = gameState.users.length === 0; // First user is Admin
-        const newUser = { id: socket.id, name, vote: null, isAdmin };
-        gameState.users.push(newUser);
+        if (user) {
+            // Reconnecting user: Update their name and current socket ID
+            user.socketId = socket.id;
+            user.name = name; 
+        } else {
+            // New user: Check if they are the first ever to join
+            const isAdmin = gameState.users.length === 0;
+            user = { persistentId, socketId: socket.id, name, vote: null, isAdmin };
+            gameState.users.push(user);
+        }
+
         io.emit('update', gameState);
     });
 
-    // Handle Vote
+    // Update other handlers to use persistentId or find by socket.id
     socket.on('vote', (value) => {
-        const user = gameState.users.find(u => u.id === socket.id);
+        const user = gameState.users.find(u => u.socketId === socket.id);
         if (user) {
             user.vote = value;
             io.emit('update', gameState);
@@ -36,7 +45,7 @@ io.on('connection', (socket) => {
 
     // Handle Reveal (Admin only)
     socket.on('reveal', () => {
-        const user = gameState.users.find(u => u.id === socket.id);
+        const user = gameState.users.find(u => u.socketId === socket.id);
         if (user && user.isAdmin) {
             gameState.revealed = true;
             io.emit('update', gameState);
@@ -45,7 +54,7 @@ io.on('connection', (socket) => {
 
     // Handle New Session (Admin only)
     socket.on('reset', () => {
-        const user = gameState.users.find(u => u.id === socket.id);
+        const user = gameState.users.find(u => u.socketId === socket.id);
         if (user && user.isAdmin) {
             gameState.revealed = false;
             gameState.users.forEach(u => u.vote = null); // Reset votes
@@ -53,16 +62,11 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Handle Disconnect
     socket.on('disconnect', () => {
-        gameState.users = gameState.users.filter(u => u.id !== socket.id);
-        
-        // If Admin left, assign new Admin to the next person
-        if (gameState.users.length > 0 && !gameState.users.some(u => u.isAdmin)) {
-            gameState.users[0].isAdmin = true;
-        }
-        
-        io.emit('update', gameState);
+        // Option: Don't immediately remove the user so they can "reconnect"
+        // For a simple poker app, you can keep them but maybe mark them as "offline"
+        // or just leave them until a manual cleanup happens.
+        console.log('User disconnected temporarily:', socket.id);
     });
 
     // Handle Emoji Reactions
