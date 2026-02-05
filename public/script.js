@@ -153,3 +153,10 @@ socket.on('reaction', (data) => {
         el.remove();
     }, 4000);
 });
+
+// Listen for the "kicked" signal from the server
+socket.on('kicked', (message) => {
+    alert(message);
+    // Optional: Redirect them away or reload the page
+    window.location.reload(); 
+});
