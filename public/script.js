@@ -1,11 +1,12 @@
 const socket = io();
-let myId = null;
+const STORAGE_KEY = 'poker_persistent_id'; // Unified Key
+const NAME_KEY = 'poker_username';
 
 function getPersistentId() {
-    let id = localStorage.getItem('poker_user_id');
+    let id = localStorage.getItem(STORAGE_KEY);
     if (!id) {
         id = 'user_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('poker_user_id', id);
+        localStorage.setItem(STORAGE_KEY, id);
     }
     return id;
 }
@@ -16,11 +17,12 @@ socket.on('init_constants', (config) => {
 });
 
 function joinGame() {
-    const name = document.getElementById('username').value;
-    if (!name) return alert("Please enter a name");
+    const nameInput = document.getElementById('username');
+    const name = nameInput.value;
+    if (!name) return;
     
     const persistentId = getPersistentId();
-    localStorage.setItem('poker_username', name);
+    localStorage.setItem(NAME_KEY, name);
 
     socket.emit('join', { name, persistentId });
     
@@ -30,10 +32,9 @@ function joinGame() {
 
 // Auto-rejoin on refresh if we have a saved name
 window.onload = () => {
-    const savedName = localStorage.getItem('poker_username');
+    const savedName = localStorage.getItem(NAME_KEY);
     if (savedName) {
-        document.getElementById('username').value = savedName;
-        joinGame();
+        document.getElementById('username').value = savedName; 
     }
 };
 
@@ -78,7 +79,8 @@ function resetGame() {
 
 socket.on('update', (state) => {
     // Get your persistent ID from storage to identify yourself
-    const myPersistentId = localStorage.getItem('poker_user_id');
+    const myPersistentId = localStorage.getItem(STORAGE_KEY);
+
     const userList = document.getElementById('user-list');
     userList.innerHTML = '';
     

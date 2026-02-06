@@ -1,12 +1,18 @@
-# Dependencies - This is the most important one!
+# Dependencies
 node_modules/
 
 # Mac system files
 .DS_Store
 
-# Environment variables (for security)
+# Environment variables
 .env
 
 # Logs
 *.log
 npm-debug.log*
+
+# Nodemon ignore
+nodemon.json
+
+# Database file
+db.json

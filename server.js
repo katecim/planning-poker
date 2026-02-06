@@ -3,7 +3,9 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const { PORT} = require('./src/constants');
+const { getDatabase } = require('./src/database');
 
+const gameState = require('./src/gameState');
 const registerUserHandler = require('./src/handlers/userHandler');
 const registerGameHandler = require('./src/handlers/gameHandler');
 const registerEmojiHandler = require('./src/handlers/emojiHandler');
@@ -14,18 +16,35 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-io.on('connection', (socket) => {
-    
-    registerUserHandler(io, socket);
-    registerGameHandler(io, socket);
-    registerEmojiHandler(io, socket);
+async function initApp() {
+    const db = await getDatabase();
+    await db.read();
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected temporarily:', socket.id);
+    if (db.data && db.data.gameState) {
+        // Only copy users and revealed state
+        gameState.users = db.data.gameState.users || [];
+        gameState.revealed = db.data.gameState.revealed || false;
+    }
+
+    db.data.gameState = gameState;
+
+    // Clear socket IDs on server restart
+    gameState.users.forEach(u => {
+        u.socketId = null;
+        u.vote = null;
     });
 
-});
+    gameState.revealed = false;
 
-server.listen(PORT, () => {
-    console.log(`Poker planning running on ${PORT}`);
-});
+    await db.write();
+
+    io.on('connection', (socket) => {
+        registerUserHandler(io, socket, gameState, db);
+        registerGameHandler(io, socket, gameState, db);
+        registerEmojiHandler(io, socket, gameState, db);
+    });
+
+    server.listen(PORT, () => console.log(`Planning Poker running on ${PORT}`));
+}
+
+initApp();

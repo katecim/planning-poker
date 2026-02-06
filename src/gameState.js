@@ -11,8 +11,12 @@ class GameState {
         });
     }
 
-    findUserBySocketId(id) {
-        return this.users.find(u => u.socketId === id || u.persistentId === id);
+    findUserBySocketId(socketId) {
+        console.log(`Searching for: ${socketId} among ${this.users.length} users...`);
+        
+        let found = this.users.find(u => u.socketId === socketId);
+        
+        return found;
     }
 
 }
