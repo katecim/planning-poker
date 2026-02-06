@@ -1,6 +1,7 @@
-const { ALLOWED_EMOJIS, ESTIMATION_VALUES, SECURITY } = require('../constants');
+const gameState = require('../gameState');
+const { ESTIMATION_VALUES } = require('../constants');
 
-module.exports = (io, socket, gameState) => {
+module.exports = (io, socket) => {
     // Handle Vote
     socket.on('vote', (value) => {
         if (!ESTIMATION_VALUES.includes(value)) {
@@ -8,7 +9,7 @@ module.exports = (io, socket, gameState) => {
             return;
         }
         
-        const user = gameState.users.find(u => u.socketId === socket.id);
+        const user = gameState.findUserBySocketId(socket.id);
 
         if (user) {
             user.vote = value;
@@ -18,7 +19,7 @@ module.exports = (io, socket, gameState) => {
 
     // Handle Reveal (Admin only)
     socket.on('reveal', () => {
-        const user = gameState.users.find(u => u.socketId === socket.id);
+        const user = gameState.findUserBySocketId(socket.id);
 
         if (user && user.isAdmin) {
             gameState.revealed = true;
@@ -30,7 +31,7 @@ module.exports = (io, socket, gameState) => {
 
     // Handle New Session (Admin only)
     socket.on('reset', () => {
-        const user = gameState.users.find(u => u.socketId === socket.id);
+        const user = gameState.findUserBySocketId(socket.id);
 
         if (user && user.isAdmin) {
             gameState.revealed = false;

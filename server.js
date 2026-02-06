@@ -14,15 +14,10 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-const gameState = {
-    users: [], // { persistentId: 'uuid', socketId: 'sid', name: 'User', vote: null, isAdmin: boolean }
-    revealed: false
-};
-
 io.on('connection', (socket) => {
     
-    registerUserHandler(io, socket, gameState);
-    registerGameHandler(io, socket, gameState);
+    registerUserHandler(io, socket);
+    registerGameHandler(io, socket);
     registerEmojiHandler(io, socket);
 
     socket.on('disconnect', () => {

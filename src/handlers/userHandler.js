@@ -1,6 +1,7 @@
+const gameState = require('../gameState');
 const { ALLOWED_EMOJIS, ESTIMATION_VALUES, SECURITY } = require('../constants');
 
-module.exports = (io, socket, gameState) => {    
+module.exports = (io, socket) => {    
     // Handle User Join
     socket.on('join', ({ name, persistentId }) => {
         // Send current deck/emojis to client immediately
@@ -16,7 +17,7 @@ module.exports = (io, socket, gameState) => {
         
         if (!cleanName) cleanName = "Anonymous Gopher";
 
-        let user = gameState.users.find(u => u.persistentId === persistentId);
+        let user = gameState.findUserBySocketId(persistentId);
 
         if (user) {
             // Update existing user (Reconnection)

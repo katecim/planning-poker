@@ -1,32 +1,39 @@
+const gameState = require('../gameState');
 const { ALLOWED_EMOJIS, SECURITY } = require('../constants');
 
 const reactionLocks = new Map();
 
 module.exports = (io, socket) => {
     socket.on('reaction', (data) => {
-        // 1. Initialize or retrieve lock state
+        // Initialize or retrieve lock state
         if (!reactionLocks.has(socket.id)) {
             reactionLocks.set(socket.id, { isLocked: false, spamCount: 0 });
         }
         
         const lock = reactionLocks.get(socket.id);
 
-        // 2. THE LOCK (Anti-Spam)
+        // The Lock
         if (lock.isLocked) {
             lock.spamCount++; 
             
             if (lock.spamCount > SECURITY.MAX_SPAM_STRIKES) {
                 console.error(`Kicking spammer: ${socket.id}`);
-                socket.emit('kicked', 'I kindly ask you to stop spamming my app. Best, Kate');
+                
+                const userIndex = gameState.users.findIndex(u => u.socketId === socket.id);
+                if (userIndex !== -1) {
+                    gameState.users.splice(userIndex, 1);
+                }
+
+                io.emit('update', gameState);
+                socket.emit('kicked', 'I kindly ask you to stop spamming my app. Please re-login. -Kate');
 
                 setTimeout(() => {
                     socket.disconnect(true);
                 }, SECURITY.DISCONNECT_DELAY_MS);
             }
-            return; // Terminate if locked
+            return;
         }    
 
-        // 3. LOCK & BROADCAST
         lock.isLocked = true;
 
         // Data Type Validation
@@ -38,7 +45,7 @@ module.exports = (io, socket) => {
             console.log(`Blocked unauthorized emoji: '${emojiChar}'`);
         }
 
-        // 4. THE UNLOCK TIMER
+        // Unlock after timeout
         setTimeout(() => {
             lock.isLocked = false;
             lock.spamCount = 0; 
