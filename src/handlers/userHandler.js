@@ -2,13 +2,7 @@ const { ALLOWED_EMOJIS, ESTIMATION_VALUES, SECURITY } = require('../constants');
 
 module.exports = (io, socket, gameState, db) => {    
     // Handle User Join
-    socket.on('join', async ({ name, persistentId }) => {
-        // Send current deck/emojis to client
-        socket.emit('init_constants', { 
-            deck: ESTIMATION_VALUES,
-            emojis: ALLOWED_EMOJIS
-        });
-
+    socket.on('join', async ({ name, persistentId }) => {  
         const inputName = name || "";
 
         // Sanitize name

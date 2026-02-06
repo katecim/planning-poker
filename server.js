@@ -39,6 +39,12 @@ async function initApp() {
     await db.write();
 
     io.on('connection', (socket) => {
+
+        socket.emit('init_constants', { 
+        deck: require('./src/constants').ESTIMATION_VALUES,
+        emojis: require('./src/constants').ALLOWED_EMOJIS
+        });
+
         registerUserHandler(io, socket, gameState, db);
         registerGameHandler(io, socket, gameState, db);
         registerEmojiHandler(io, socket, gameState, db);
