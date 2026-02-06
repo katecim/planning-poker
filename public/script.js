@@ -1,8 +1,6 @@
 const socket = io();
 let myId = null;
-const cards = [1, 2, 3, 5, 8, 13, '🦫'];
 
-// --- SESSION PERSISTENCE ---
 function getPersistentId() {
     let id = localStorage.getItem('poker_user_id');
     if (!id) {
@@ -12,6 +10,11 @@ function getPersistentId() {
     return id;
 }
 
+socket.on('init_constants', (config) => {
+    renderDeck(config.deck);
+    renderEmojiButtons(config.emojis);
+});
+
 function joinGame() {
     const name = document.getElementById('username').value;
     if (!name) return alert("Please enter a name");
@@ -19,12 +22,10 @@ function joinGame() {
     const persistentId = getPersistentId();
     localStorage.setItem('poker_username', name);
 
-    // Send persistent identity to server
     socket.emit('join', { name, persistentId });
     
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
-    renderDeck();
 }
 
 // Auto-rejoin on refresh if we have a saved name
@@ -36,23 +37,36 @@ window.onload = () => {
     }
 };
 
-function renderDeck() {
+function renderDeck(deckValues) {
     const deckDiv = document.getElementById('deck');
     deckDiv.innerHTML = '';
-    cards.forEach(val => {
+
+    deckValues.forEach(val => {
         const btn = document.createElement('button');
         btn.className = 'card';
-        // We add a data-value attribute so we can easily find this card later
         btn.setAttribute('data-value', val); 
         btn.innerHTML = typeof val === 'string' ? `<span>${val}</span>` : val;
         
         btn.onclick = () => {
-            // Visual feedback immediately on click
             document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
             btn.classList.add('selected');
             socket.emit('vote', val);
         };
         deckDiv.appendChild(btn);
+    });
+}
+
+function renderEmojiButtons(emojiList) {
+    const emojiContainer = document.getElementById('emoji-controls');
+    if (!emojiContainer) return;
+    
+    emojiContainer.innerHTML = '';
+    emojiList.forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.className = 'emoji-btn';
+        btn.innerText = emoji;
+        btn.onclick = (e) => sendReaction(emoji, e);
+        emojiContainer.appendChild(btn);
     });
 }
 

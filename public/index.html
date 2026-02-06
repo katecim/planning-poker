@@ -18,7 +18,7 @@
             <p style="margin-bottom: 25px; opacity: 0.8;">Enter and start planning.</p>
             <input type="text" id="username" placeholder="What's your name?" autocomplete="off"/>
             <br>
-            <button onclick="joinGame()">Enter Session 🏆</button>
+            <button onclick="joinGame()">Enter Session</button>
         </div>
 
         <div id="game-screen" class="hidden">
@@ -47,14 +47,8 @@
             </div>
         </div>
     </div>
-
     
-    <div class="reaction-bar">
-        <button class="reaction-btn" onclick="sendReaction('🎉', event)">🎉</button>
-        <button class="reaction-btn" onclick="sendReaction('💯', event)">💯</button>
-        <button class="reaction-btn" onclick="sendReaction('🙅‍♀️', event)">🙅‍♀️</button>
-        <button class="reaction-btn" onclick="sendReaction('☕', event)">☕</button>
-    </div>
+    <div class="reaction-bar" id="emoji-controls"></div>
     
     <div id="floating-container"></div>
 

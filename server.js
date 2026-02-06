@@ -1,6 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
+const { PORT, ALLOWED_EMOJIS, ESTIMATION_VALUES, SECURITY } = require('./src/constants');
 
 const app = express();
 const server = http.createServer(app);
@@ -8,32 +10,36 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-const ALLOWED_EMOJIS = ['🎉', '💯', '🙅‍♀️', '☕'];
-
+// Reaction locks to prevent spam
 const reactionLocks = new Map();
 
-// Game State
 let gameState = {
     users: [], // { persistentId: 'uuid', socketId: 'sid', name: 'User', vote: null, isAdmin: boolean }
     revealed: false
 };
 
 io.on('connection', (socket) => {
-    // Handle User Join (Modified for Persistence)
+    
+    // Handle User Join
     socket.on('join', ({ name, persistentId }) => {
-        // Security check: Sanitize name input to prevent XSS and limit length
-        let cleanName = name.replace(/<[^>]*>?/gm, '').trim().substring(0, 20);
+        socket.emit('init_constants', { 
+            deck: ESTIMATION_VALUES,
+            emojis: ALLOWED_EMOJIS
+        });
+
+        // Sanitize name input to prevent XSS and limit length
+        let cleanName = name.replace(SECURITY.NAME_SANITIZATION_REGEX, '').trim().substring(0, SECURITY.MAX_NAME_LENGTH);
         if (!cleanName) cleanName = "Anonymous Gopher";
 
         // Check if this user already exists in the session
         let user = gameState.users.find(u => u.persistentId === persistentId);
 
         if (user) {
-            // Reconnecting user: Update their name and current socket ID
+            // Reconnect user
             user.socketId = socket.id;
             user.name = cleanName; 
         } else {
-            // New user: Check if they are the first ever to join
+            // New user
             const isAdmin = gameState.users.length === 0;
             user = { persistentId, socketId: socket.id, name: cleanName, vote: null, isAdmin };
             gameState.users.push(user);
@@ -42,11 +48,10 @@ io.on('connection', (socket) => {
         io.emit('update', gameState);
     });
 
-    // Update other handlers to use persistentId or find by socket.id
+    // Handle Vote
     socket.on('vote', (value) => {
-        const validCards = [1, 2, 3, 5, 8, 13, '🦫'];
-        if (!validCards.includes(value)) {
-            console.log(`Blocked illegal vote: ${value}`);
+        if (!ESTIMATION_VALUES.includes(value)) {
+            console.log(`Blocked unauthorized vote: ${value}`);
             return;
         }
         
@@ -103,11 +108,9 @@ io.on('connection', (socket) => {
             
             if (lock.spamCount > 20) {
                 console.error(`Kicking spammer: ${socket.id}`);
-
-                // 1. Send the warning signal
                 socket.emit('kicked', 'I kindly ask you to stop spamming my app. Best, Kate');
 
-                // 2. Disconnect with a tiny delay to ensure the message is sent
+                // Disconnect with a tiny delay to ensure the message is sent
                 setTimeout(() => {
                     socket.disconnect(true);
                 }, 50);
@@ -131,11 +134,10 @@ io.on('connection', (socket) => {
             lock.isLocked = false;
             // Reset spamCount after a successful wait
             lock.spamCount = 0; 
-        }, 500); 
+        }, SECURITY.REACTION_LOCK_TIMEOUT_MS); 
     });
 });
 
-const PORT = 3000;
 server.listen(PORT, () => {
-    console.log(`Poker planning running on http://localhost:${PORT}`);
+    console.log(`Poker planning running on ${PORT}`);
 });
