@@ -29,7 +29,7 @@ module.exports = (io, socket, gameState, db) => {
             // New user (First one is Admin)
             const duplicateCheck = gameState.users.find(u => u.socketId === socket.id);
             if (duplicateCheck) return;
-            
+
             const isAdmin = gameState.users.length === 0;
             user = { 
                 persistentId, 
@@ -45,5 +45,24 @@ module.exports = (io, socket, gameState, db) => {
         await db.write();
 
         io.emit('update', gameState);
+    });
+
+    socket.on('logout', async () => {
+        console.log(`User logging out: ${socket.id}`);
+        
+        // Find and remove the user
+        const index = gameState.users.findIndex(u => u.socketId === socket.id);
+        
+        if (index !== -1) {
+            const removedUser = gameState.users.splice(index, 1)[0];
+
+            // If the person leaving was the Admin, assign Admin to the next person in line (if anyone is left)
+            if (removedUser.isAdmin && gameState.users.length > 0) {
+                gameState.users[0].isAdmin = true;
+            }
+
+            await db.write();
+            io.emit('update', gameState);
+        }
     });
 }

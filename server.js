@@ -28,7 +28,7 @@ async function initApp() {
 
     db.data.gameState = gameState;
 
-    // Clear socket IDs on server restart
+    // Clear up on server restart
     gameState.users.forEach(u => {
         u.socketId = null;
         u.vote = null;

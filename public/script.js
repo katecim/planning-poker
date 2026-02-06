@@ -28,6 +28,7 @@ function joinGame() {
     
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
+    document.getElementById('logout-container').classList.remove('hidden');
 }
 
 // Auto-rejoin on refresh if we have a saved name
@@ -170,9 +171,23 @@ socket.on('reaction', (data) => {
     }, 4000);
 });
 
+function logout() {
+    if (confirm("Are you sure you want to leave the session?")) {
+        socket.emit('logout');
+        
+        // Clear local storage
+        localStorage.removeItem('poker_username');
+        localStorage.removeItem('poker_persistent_id');
+
+        document.getElementById('logout-container').classList.add('hidden');
+
+        //Go back to the login screen
+        window.location.reload();
+    }
+}
+
 // Listen for the "kicked" signal from the server
 socket.on('kicked', (message) => {
     alert(message);
-    // Optional: Redirect them away or reload the page
     window.location.reload(); 
 });

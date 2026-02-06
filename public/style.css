@@ -249,3 +249,25 @@ li:hover { background: rgba(255, 255, 255, 0.15); }
         opacity: 0; 
     }
 }
+
+.header-actions {
+    position: fixed; 
+    top: 20px;
+    right: 30px;
+}
+
+.logout-btn {
+    background: transparent;
+    color: #ff4d4d;
+    border: 1px solid #ff4d4d;
+    padding: 5px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    background: #ff4d4d;
+    color: white;
+}
