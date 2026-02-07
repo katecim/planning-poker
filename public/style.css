@@ -7,14 +7,15 @@
     --text-light: #f3f4f6;
     --text-dark: #1f2937;
     --font-stack: 'Inter', system-ui, -apple-system, sans-serif;
+    --glass-blur: blur(12px);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 body {
+    /* background: color | image | position / size | repeat | attachment */
+    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), 
+                url('./assets/images/casino-table.jpg') center/cover no-repeat fixed;
     font-family: var(--font-stack);
-    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('./assets/images/casino-table.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
     color: var(--text-light);
     display: flex;
     justify-content: center;
@@ -24,26 +25,36 @@ body {
     box-sizing: border-box;
 }
 
+.container, .reaction-bar {
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
+}
+
 .container {
     width: 100%;
     max-width: 650px;
     text-align: center;
     margin-top: 30px;
     padding: 30px;
-    /* Glassmorphism Effect */
     background: var(--bg-overlay);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .hidden { display: none !important; }
-h1, h2, h3 { font-weight: 700; letter-spacing: -0.5px; margin-top: 0;}
-h1 { font-size: 2.5rem; margin-bottom: 30px; }
 
-/* --- Login Screen --- */
+h1, h2, h3 { 
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-top: 0;
+}
+
+h1 { 
+    font-size: 2.5rem;
+    margin-bottom: 30px; 
+}
+
 #login-screen input {
     padding: 15px;
     font-size: 18px;
@@ -56,21 +67,34 @@ h1 { font-size: 2.5rem; margin-bottom: 30px; }
     transition: 0.3s;
     margin-bottom: 20px;
 }
-#login-screen input:focus { border-color: var(--primary-color); }
+
+#login-screen input:focus { 
+    border-color: var(--primary-color);
+}
+
+#login-screen button, .btn-reveal, .btn-reset, .logout-btn, .card {
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    align-items: center;
+    justify-content: center;
+}
+
 #login-screen button {
     padding: 15px 30px;
     font-size: 18px;
     font-weight: bold;
     background: var(--primary-color);
     color: var(--text-dark);
-    border: none;
     border-radius: 12px;
-    cursor: pointer;
-    transition: transform 0.2s, background 0.2s;
 }
-#login-screen button:hover { transform: translateY(-3px); background: var(--primary-hover); box-shadow: 0 5px 15px rgba(74, 222, 128, 0.4); }
 
-/* --- Game Header & Controls --- */
+#login-screen button:hover { 
+    transform: translateY(-3px);
+    background: var(--primary-hover);
+    box-shadow: 0 5px 15px rgba(74, 222, 128, 0.4);
+}
+
 .header {
     display: flex;
     flex-direction: column;
@@ -80,30 +104,45 @@ h1 { font-size: 2.5rem; margin-bottom: 30px; }
     border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
-#session-status { font-size: 1.5rem; color: var(--primary-color); }
+#session-status { 
+    font-size: 1.5rem; 
+    color: var(--primary-color); 
+}
 
-#admin-controls { display: flex; gap: 10px; justify-content: center; }
+#admin-controls { 
+    display: flex; 
+    gap: 10px; 
+    justify-content: center; }
 
 .btn-reveal, .btn-reset {
-    border: none;
     padding: 12px 24px;
-    cursor: pointer;
     border-radius: 10px;
     font-weight: 700;
     font-size: 14px;
-    transition: 0.2s all;
-    display: flex;
-    align-items: center;
     gap: 8px;
 }
-.btn-reveal { background: var(--primary-color); color: var(--text-dark); }
-.btn-reveal:hover { background: var(--primary-hover); transform: translateY(-2px); }
+.btn-reveal { 
+    background: var(--primary-color); 
+    color: var(--text-dark); 
+}
 
-.btn-reset { background: transparent; color: var(--secondary-color); border: 2px solid var(--secondary-color); }
-.btn-reset:hover { background: var(--secondary-color); color: white; transform: translateY(-2px); }
+.btn-reveal:hover { 
+    background: var(--primary-hover); 
+    transform: translateY(-2px); 
+}
 
+.btn-reset { 
+    background: transparent; 
+    color: var(--secondary-color); 
+    border: 2px solid var(--secondary-color); 
+}
 
-/* --- Poker Deck --- */
+.btn-reset:hover { 
+    background: var(--secondary-color); 
+    color: white; 
+    transform: translateY(-2px); 
+}
+
 .deck {
     display: flex;
     flex-wrap: wrap;
@@ -114,15 +153,13 @@ h1 { font-size: 2.5rem; margin-bottom: 30px; }
 
 .card {
     width: 65px; height: 90px;
-    border: none;
     border-radius: 12px;
     background: var(--card-bg);
     color: var(--text-dark);
-    font-size: 20px; font-weight: 800;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy transition */
+    font-size: 20px; 
+    font-weight: 800;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    display: flex; align-items: center; justify-content: center;
 }
 
 .card:hover {
@@ -139,23 +176,35 @@ h1 { font-size: 2.5rem; margin-bottom: 30px; }
     border: 2px solid white;
 }
 
-
-/* --- Results Area --- */
 #results {
-    background: rgba(74, 222, 128, 0.1); /* subtle green tint */
+    background: rgba(74, 222, 128, 0.1);
     padding: 20px;
     border-radius: 15px;
     margin-bottom: 30px;
     border: 1px solid var(--primary-color);
     animation: popIn 0.5s ease forwards;
 }
-#average-score { font-size: 3rem; color: var(--primary-color); display: block; margin-top: 10px;}
 
-/* --- Participants List --- */
-.participants { text-align: left; }
-.participants h3 { margin-bottom: 15px; padding-left: 10px; opacity: 0.8; }
+#average-score { 
+    font-size: 3rem; 
+    color: var(--primary-color); 
+    display: block; 
+    margin-top: 10px;
+}
 
-ul { list-style: none; padding: 0; }
+.participants { 
+    text-align: left; 
+}
+
+.participants h3 { 
+    margin-bottom: 15px; 
+    padding-left: 10px; 
+    opacity: 0.8; 
+}
+
+ul { 
+    list-style: none; 
+    padding: 0; }
 
 li {
     background: rgba(255, 255, 255, 0.07);
@@ -168,52 +217,72 @@ li {
     transition: 0.3s;
     border: 1px solid rgba(255,255,255,0.05);
 }
-li:hover { background: rgba(255, 255, 255, 0.15); }
 
-.name { font-weight: 500; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;}
-.admin-badge { font-size: 0.7rem; background: var(--secondary-color); padding: 3px 8px; border-radius: 10px; color: white; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;}
+li:hover { 
+    background: rgba(255, 255, 255, 0.15); 
+}
 
-.vote { font-weight: bold; color: rgba(255,255,255,0.5); font-size: 1.2rem; }
-.vote.revealed { color: var(--primary-color); font-size: 1.5em; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);}
+.name { 
+    font-weight: 500; 
+    font-size: 1.1rem; 
+    display: flex; 
+    align-items: center; 
+    gap: 8px;
+}
 
-/* Animations */
+.admin-badge { 
+    font-size: 0.7rem; 
+    background: var(--secondary-color); 
+    padding: 3px 8px; 
+    border-radius: 10px; 
+    color: white; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    font-weight: bold;
+}
+
+.vote { 
+    font-weight: bold; 
+    color: rgba(255,255,255,0.5); 
+    font-size: 1.2rem; 
+}
+
+.vote.revealed { 
+    color: var(--primary-color); 
+    font-size: 1.5em; 
+    text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
 @keyframes popIn {
     from { opacity: 0; transform: scale(0.9); }
     to { opacity: 1; transform: scale(1); }
 }
 
-/* Responsive adjustments */
 @media (max-width: 600px) {
-    .card { width: 55px; height: 75px; font-size: 18px; }
-    #login-screen input { width: 100%; }
-    .header { flex-direction: column; }
+    .card { 
+        width: 55px; 
+        height: 75px; 
+        font-size: 18px; 
+    }
+    #login-screen input { 
+        width: 100%; 
+    }
 }
 
-/* --- Reaction Toolbar --- */
 .reaction-bar {
     position: fixed;
     bottom: 30px;
-    right: 30px; /* Anchors it to the right */
-    left: auto;  /* Removes the previous centering */
-    transform: none; /* Removes the previous centering */
-    
-    /* Vertical Layout (Optional: remove 'flex-direction: column' if you want a horizontal row) */
+    right: 30px; 
     display: flex;
-    flex-direction: row; /* Horizontal row like your image */
+    flex-direction: row;
     gap: 10px;
     padding: 10px 15px;
-    
-    /* Glassmorphism */
     background: rgba(17, 24, 39, 0.85);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px; /* Slightly squarer to match the corner */
+    border-radius: 20px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    
     z-index: 1000;
 }
 
-/* Button styling remains the same */
 .emoji-btn {
     background: none;
     border: none;
@@ -222,10 +291,13 @@ li:hover { background: rgba(255, 255, 255, 0.15); }
     transition: transform 0.2s;
     padding: 5px;
 }
-.emoji-btn:hover { transform: scale(1.3); }
+
+.emoji-btn:hover { 
+    transform: scale(1.3); 
+}
 
 .floater {
-    position: fixed; /* Fixed relative to screen */
+    position: fixed;
     bottom: -50px;
     font-size: 35px;
     pointer-events: none;
@@ -235,13 +307,11 @@ li:hover { background: rgba(255, 255, 255, 0.15); }
 
 @keyframes floatUp {
     0% { 
-        /* translateX(-50%) centers the emoji horizontally */
-        transform: translateX(-50%) translateY(0) scale(0.5); 
+        transform: translateX(-50%) translateY(0) scale(0.5); /* centers the emoji horizontally */
         opacity: 0; 
     }
     10% { 
-        opacity: 1; 
-        /* Keep translateX(-50%) in every frame so it stays centered */
+        opacity: 1;
         transform: translateX(-50%) translateY(-20px) scale(1.2); 
     } 
     100% { 
