@@ -32,7 +32,8 @@ async function initApp() {
         // Send initial constants to the client
         socket.emit('init_constants', { 
             deck: ESTIMATION_VALUES,
-            emojis: ALLOWED_EMOJIS
+            emojis: ALLOWED_EMOJIS,
+            currentBg: gameState.currentBg || 'casino'
         });
 
         registerUserHandler(io, socket, gameState, db);

@@ -10,7 +10,8 @@ const screens = {
     admin: document.getElementById('admin-controls'),
     results: document.getElementById('results'),
     userList: document.getElementById('user-list'),
-    status: document.getElementById('session-status')
+    status: document.getElementById('session-status'),
+    bgWidget: document.getElementById('admin-bg-widget')
 };
 
 /** Helpers **/
@@ -29,10 +30,23 @@ const toggleScreens = (isLoggedIn) => {
     screens.logout.classList.toggle('hidden', !isLoggedIn);
 };
 
+// Background change
+document.querySelectorAll('.bg-btn').forEach(btn => {
+    btn.onclick = () => {
+        const bgType = btn.getAttribute('data-bg');
+        
+        socket.emit('change_bg', bgType)
+    };
+});
+
 /** Socket Listeners **/
-socket.on('init_constants', ({ deck, emojis }) => {
+socket.on('init_constants', ({ deck, emojis, currentBg }) => {
     renderDeck(deck);
     renderEmojiButtons(emojis);
+
+    if (currentBg) {
+        document.body.className = `bg-${currentBg}`;
+    }
 });
 
 socket.on('update', (state) => {
@@ -44,6 +58,7 @@ socket.on('update', (state) => {
         document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
     }
     screens.admin.classList.toggle('hidden', !me?.isAdmin);
+    screens.bgWidget.classList.toggle('hidden', !me?.isAdmin);
 
     // Render Users & Calculate
     let [total, count] = [0, 0];
@@ -72,6 +87,16 @@ socket.on('update', (state) => {
         screens.status.innerText = "Voting in progress...";
         screens.status.style.color = "rgba(255,255,255,0.7)";
     }
+});
+
+// Background change listener
+socket.on('bg_changed', (bgType) => {
+    document.body.className = `bg-${bgType}`;
+
+    document.querySelectorAll('.bg-btn').forEach(btn => {
+        const isActive = btn.getAttribute('data-bg') === bgType;
+        btn.classList.toggle('selected', isActive);
+    });
 });
 
 /** Game Actions **/
@@ -166,9 +191,3 @@ window.onload = () => {
         document.getElementById('username').value = savedName; 
     }
 };
-
-// Listen for the "kicked" signal from the server
-socket.on('kicked', (message) => {
-    alert(message);
-    window.location.reload(); 
-});

@@ -341,3 +341,48 @@ li:hover {
     background: #ff4d4d;
     color: white;
 }
+
+.bg-widget {
+    position: fixed;
+    bottom: 30px;
+    left: 30px; /* Opposite of reaction bar */
+    display: flex;
+    gap: 10px;
+    padding: 10px 15px;
+    background: rgba(17, 24, 39, 0.85);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.bg-btn {
+    background: none;
+    border: 2px solid transparent;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 5px;
+    border-radius: 10px;
+}
+
+.bg-btn:hover { transform: scale(1.1); }
+
+.bg-btn.selected {
+    border-color: var(--primary-color);
+    background: rgba(74, 222, 128, 0.1);
+    transform: scale(1.1);
+}
+
+/* Background Variations */
+body.bg-casino {
+    background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('./assets/images/casino-table.jpg') center/cover no-repeat fixed;
+}
+body.bg-gopher {
+    background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('./assets/images/gopher.jpg') center/cover no-repeat fixed;
+}
+body.bg-minimal {
+    background: radial-gradient(circle, #1e293b 0%, #0f172a 100%) fixed;
+}

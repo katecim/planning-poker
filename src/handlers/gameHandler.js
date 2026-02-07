@@ -7,7 +7,6 @@ module.exports = (io, socket, gameState, db) => {
         io.emit('update', gameState);
     }
     
-    
     // Handle Vote
     socket.on('vote', async (value) => {
         if (!ESTIMATION_VALUES.includes(value)) {
@@ -33,6 +32,15 @@ module.exports = (io, socket, gameState, db) => {
         } else {
         console.log(`Blocked unauthorized reveal attempt from: ${user ? user.name : 'Unknown'}`);
     }
+    });
+
+    // Handle Background Change (Admin only)
+    socket.on('change_bg', (bgType) => {
+        const user = gameState.users.find(u => u.socketId === socket.id);
+        if (user && user.isAdmin) {
+            gameState.currentBg = bgType;
+            io.emit('bg_changed', bgType);
+        }
     });
 
     // Handle New Session (Admin only)
