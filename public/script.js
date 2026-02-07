@@ -1,54 +1,103 @@
 const socket = io();
-const STORAGE_KEY = 'poker_persistent_id'; // Unified Key
-const NAME_KEY = 'poker_username';
+const STORAGE_KEY = 'persistent_id'; // unified key
+const NAME_KEY = 'username';
 
-function getPersistentId() {
+// Cache common elements
+const screens = {
+    login: document.getElementById('login-screen'),
+    game: document.getElementById('game-screen'),
+    logout: document.getElementById('logout-container'),
+    admin: document.getElementById('admin-controls'),
+    results: document.getElementById('results'),
+    userList: document.getElementById('user-list'),
+    status: document.getElementById('session-status')
+};
+
+/** Helpers **/
+const getPersistentId = () => {
     let id = localStorage.getItem(STORAGE_KEY);
     if (!id) {
-        id = 'user_' + Math.random().toString(36).substr(2, 9);
+        id = `user_${Math.random().toString(36).slice(2, 11)}`;
         localStorage.setItem(STORAGE_KEY, id);
     }
     return id;
-}
+};
 
-socket.on('init_constants', (config) => {
-    renderDeck(config.deck);
-    renderEmojiButtons(config.emojis);
+const toggleScreens = (isLoggedIn) => {
+    screens.login.classList.toggle('hidden', isLoggedIn);
+    screens.game.classList.toggle('hidden', !isLoggedIn);
+    screens.logout.classList.toggle('hidden', !isLoggedIn);
+};
+
+/** Socket Listeners **/
+socket.on('init_constants', ({ deck, emojis }) => {
+    renderDeck(deck);
+    renderEmojiButtons(emojis);
 });
 
-function joinGame() {
-    const nameInput = document.getElementById('username');
-    const name = nameInput.value;
-    if (!name) return;
-    
-    const persistentId = getPersistentId();
-    localStorage.setItem(NAME_KEY, name);
+socket.on('update', (state) => {
+    const myId = localStorage.getItem(STORAGE_KEY);
+    const me = state.users.find(u => u.persistentId === myId);
 
-    socket.emit('join', { name, persistentId });
+    // Sync UI
+    if (me?.vote === null) {
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+    }
+    screens.admin.classList.toggle('hidden', !me?.isAdmin);
+
+    // Render Users & Calculate
+    let [total, count] = [0, 0];
+    screens.userList.innerHTML = state.users.map(u => {
+        let display = u.vote === null ? '...' : '✔️';
+        
+        if (state.revealed) {
+            display = u.vote ?? '-';
+            if (typeof u.vote === 'number') { total += u.vote; count++; }
+        }
+
+        const badge = u.isAdmin ? '<span class="admin-badge">Guide</span>' : '';
+        return `<li>
+            <span class="name">${u.name} ${badge}</span>
+            <span class="vote ${state.revealed ? 'revealed' : ''}">${display}</span>
+        </li>`;
+    }).join('');
+
+    // Results UI
+    screens.results.classList.toggle('hidden', !state.revealed);
+    if (state.revealed) {
+        document.getElementById('average-score').innerText = count > 0 ? (total / count).toFixed(1) : 0;
+        screens.status.innerText = "Votes Revealed!";
+        screens.status.style.color = "var(--primary-color)";
+    } else {
+        screens.status.innerText = "Voting in progress...";
+        screens.status.style.color = "rgba(255,255,255,0.7)";
+    }
+});
+
+/** Game Actions **/
+function joinGame() {
+    const name = document.getElementById('username').value;
+    if (!name) return alert("Please enter a name");
     
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('game-screen').classList.remove('hidden');
-    document.getElementById('logout-container').classList.remove('hidden');
+    localStorage.setItem(NAME_KEY, name);
+    socket.emit('join', { name, persistentId: getPersistentId() });
+    toggleScreens(true);
 }
 
-// Auto-rejoin on refresh if we have a saved name
-window.onload = () => {
-    const savedName = localStorage.getItem(NAME_KEY);
-    if (savedName) {
-        document.getElementById('username').value = savedName; 
-    }
-};
+function logout() {
+    if (!confirm("Are you sure?")) return;
+    socket.emit('logout');
+    localStorage.clear();
+    window.location.reload();
+}
 
 function renderDeck(deckValues) {
     const deckDiv = document.getElementById('deck');
     deckDiv.innerHTML = '';
-
     deckValues.forEach(val => {
         const btn = document.createElement('button');
         btn.className = 'card';
-        btn.setAttribute('data-value', val); 
         btn.innerHTML = typeof val === 'string' ? `<span>${val}</span>` : val;
-        
         btn.onclick = () => {
             document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
             btn.classList.add('selected');
@@ -76,68 +125,8 @@ function revealCards() { socket.emit('reveal'); }
 
 function resetGame() { 
     socket.emit('reset'); 
-}
+} 
 
-socket.on('update', (state) => {
-    // Get your persistent ID from storage to identify yourself
-    const myPersistentId = localStorage.getItem(STORAGE_KEY);
-
-    const userList = document.getElementById('user-list');
-    userList.innerHTML = '';
-    
-    let total = 0;
-    let count = 0;
-
-    // 1. Find yourself in the state using persistentId instead of socket.id
-    const me = state.users.find(u => u.persistentId === myPersistentId);
-
-    // 2. SYNC DECK SELECTION
-    if (me && me.vote === null) {
-        document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
-    }
-
-    state.users.forEach(u => {
-        const li = document.createElement('li');
-        
-        let voteDisplay = u.vote === null ? '...' : '✔️'; 
-        if (state.revealed) {
-            voteDisplay = u.vote === null ? '-' : u.vote;
-            if (typeof u.vote === 'number') {
-                total += u.vote;
-                count++;
-            }
-        }
-
-        const adminBadge = u.isAdmin ? '<span class="admin-badge">Guide</span>' : '';
-        li.innerHTML = `
-            <span class="name">${u.name} ${adminBadge}</span>
-            <span class="vote ${state.revealed ? 'revealed' : ''}">${voteDisplay}</span>
-        `;
-        userList.appendChild(li);
-
-        // Check if THIS user in the loop is ME and if I am the ADMIN
-        if (u.persistentId === myPersistentId && u.isAdmin) {
-            document.getElementById('admin-controls').classList.remove('hidden');
-        }
-    });
-
-    // Update Results UI
-    const resultsDiv = document.getElementById('results');
-    
-    if (state.revealed) {
-        resultsDiv.classList.remove('hidden');
-        const avg = count > 0 ? (total / count).toFixed(1) : 0;
-        document.getElementById('average-score').innerText = avg;
-        document.getElementById('session-status').innerText = "Votes Revealed!";
-        document.getElementById('session-status').style.color = "var(--primary-color)";
-    } else {
-        resultsDiv.classList.add('hidden');
-        document.getElementById('session-status').innerText = "Voting in progress...";
-        document.getElementById('session-status').style.color = "rgba(255,255,255,0.7)";
-    }
-});
-
-// 1. Send Reaction with Position Data
 function sendReaction(emoji, event) {
     // Calculate the button's center position relative to the screen width
     const rect = event.target.getBoundingClientRect();
@@ -149,42 +138,34 @@ function sendReaction(emoji, event) {
     socket.emit('reaction', { emoji, x: xPercent });
 }
 
-// 2. Receive and Animate
 socket.on('reaction', (data) => {
     const emojiChar = data.emoji || data; 
     const xPos = data.x || 90;
-
-    const container = document.body;
+    
+    // Create floating emoji element
     const el = document.createElement('div');
     el.innerText = emojiChar;
     el.className = 'floater';
     
-    const randomOffset = (Math.random() * 1) - 0.5; 
+    const randomOffset = (Math.random() * 1) - 0.5; // Add a small random horizontal offset to prevent perfect stacking
     
     el.style.left = (xPos + randomOffset) + '%'; 
     el.style.bottom = '80px'; 
 
-    container.appendChild(el);
+    document.body.appendChild(el);
 
     setTimeout(() => {
         el.remove();
     }, 4000);
 });
 
-function logout() {
-    if (confirm("Are you sure you want to leave the session?")) {
-        socket.emit('logout');
-        
-        // Clear local storage
-        localStorage.removeItem('poker_username');
-        localStorage.removeItem('poker_persistent_id');
-
-        document.getElementById('logout-container').classList.add('hidden');
-
-        //Go back to the login screen
-        window.location.reload();
+// Suggest name on refresh if name in localStorage
+window.onload = () => {
+    const savedName = localStorage.getItem(NAME_KEY);
+    if (savedName) {
+        document.getElementById('username').value = savedName; 
     }
-}
+};
 
 // Listen for the "kicked" signal from the server
 socket.on('kicked', (message) => {

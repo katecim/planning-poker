@@ -1,48 +1,25 @@
 const { ALLOWED_EMOJIS, SECURITY } = require('../constants');
 
+// Memory store to track who is currently on cooldown (to prevent emoji spam)
 const reactionLocks = new Map();
 
-module.exports = (io, socket, gameState, db) => {
+module.exports = (io, socket) => {
     socket.on('reaction', async (data) => {
         // Initialize or retrieve lock state
         if (!reactionLocks.has(socket.id)) {
-            reactionLocks.set(socket.id, { isLocked: false, spamCount: 0 });
+            reactionLocks.set(socket.id, { isLocked: false });
         }
         
         const lock = reactionLocks.get(socket.id);
 
-        // The Lock
-        if (lock.isLocked) {
-            lock.spamCount++; 
-            
-            if (lock.spamCount > SECURITY.MAX_SPAM_STRIKES) {
-                const user = gameState.findUserBySocketId(socket.id);
+        // If the user is on cooldown, ignore the reaction (rate limiting)
+        if (lock.isLocked) return;
 
-                if (user) {
-                    console.error(`Kicking spammer: ${user.name} (${socket.id})`);
-                
-                gameState.users = gameState.users.filter(u => u.socketId !== socket.id);
-
-                await db.write();
-
-                io.emit('update', gameState);
-                }
-
-                socket.emit('kicked', 'I kindly ask you to stop spamming my app. Please re-login. -Kate');
-
-                setTimeout(() => {
-                    socket.disconnect(true);
-                }, SECURITY.DISCONNECT_DELAY_MS);
-            }
-            return;
-        }    
-
-        lock.isLocked = true;
-
-        // Data Type Validation
+        // Emoji validation
         const emojiChar = typeof data === 'object' ? data.emoji : data;
         
         if (ALLOWED_EMOJIS.includes(emojiChar)) {
+            lock.isLocked = true;
             io.emit('reaction', data);
         } else {
             console.log(`Blocked unauthorized emoji: '${emojiChar}'`);
@@ -51,15 +28,8 @@ module.exports = (io, socket, gameState, db) => {
         // Unlock after timeout
         setTimeout(() => {
             if (reactionLocks.has(socket.id)) {
-                const currentLock = reactionLocks.get(socket.id);
-                currentLock.isLocked = false;
-                currentLock.spamCount = 0; 
-            }
-        }, SECURITY.REACTION_LOCK_TIMEOUT_MS); 
-    });
-
-    // Cleanup memory when the socket is closed
-    socket.on('disconnect', () => {
-        reactionLocks.delete(socket.id);
+                    reactionLocks.get(socket.id).isLocked = false;
+                }
+            }, SECURITY.REACTION_LOCK_TIMEOUT_MS);
     });
 };

@@ -1,16 +1,22 @@
-const { ALLOWED_EMOJIS, ESTIMATION_VALUES, SECURITY } = require('../constants');
+const { SECURITY } = require('../constants');
 
-module.exports = (io, socket, gameState, db) => {    
+module.exports = (io, socket, gameState, db) => {
+   // Sanitize name
+    const getCleanName = (name) => {
+        const clean = (name || "").replace(SECURITY.NAME_SANITIZATION_REGEX, '').trim();
+        return clean.substring(0, SECURITY.MAX_NAME_LENGTH) || "Anonymous Gopher";
+    };
+   
+    // Save and alert everyone
+    const broadcastUpdate = async () => {
+        await db.write();
+        io.emit('update', gameState);
+    };
+    
+    
     // Handle User Join
-    socket.on('join', async ({ name, persistentId }) => {  
-        const inputName = name || "";
-
-        // Sanitize name
-        let cleanName = inputName.replace(SECURITY.NAME_SANITIZATION_REGEX, '')
-                            .trim()
-                            .substring(0, SECURITY.MAX_NAME_LENGTH);
-        
-        if (!cleanName) cleanName = "Anonymous Gopher";
+    socket.on('join', async ({ name, persistentId }) => {
+        let cleanName = getCleanName(name);
 
         let user = gameState.users.find(u => u.persistentId === persistentId);
 
@@ -18,12 +24,11 @@ module.exports = (io, socket, gameState, db) => {
             // Update existing user (Reconnection)
             user.socketId = socket.id;
             user.name = cleanName;
-            console.log(`✅ ID Synced: ${user.name} is now ${socket.id}`);
         } else {
-            // New user (First one is Admin)
+            // New user
             const duplicateCheck = gameState.users.find(u => u.socketId === socket.id);
             if (duplicateCheck) return;
-
+            // First user is Admin
             const isAdmin = gameState.users.length === 0;
             user = { 
                 persistentId, 
@@ -33,30 +38,23 @@ module.exports = (io, socket, gameState, db) => {
                 isAdmin
             };
             gameState.users.push(user);
-            console.log(`New user joined: ${cleanName}`);
         }
 
-        await db.write();
-
-        io.emit('update', gameState);
+        await broadcastUpdate();
     });
 
     socket.on('logout', async () => {
-        console.log(`User logging out: ${socket.id}`);
-        
         // Find and remove the user
         const index = gameState.users.findIndex(u => u.socketId === socket.id);
-        
         if (index !== -1) {
             const removedUser = gameState.users.splice(index, 1)[0];
 
-            // If the person leaving was the Admin, assign Admin to the next person in line (if anyone is left)
+            // If the person leaving was the Admin, assign Admin to the next person in line
             if (removedUser.isAdmin && gameState.users.length > 0) {
                 gameState.users[0].isAdmin = true;
             }
 
-            await db.write();
-            io.emit('update', gameState);
-        }
+            await broadcastUpdate();
+            }
     });
 }

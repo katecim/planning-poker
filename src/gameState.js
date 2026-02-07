@@ -12,13 +12,10 @@ class GameState {
     }
 
     findUserBySocketId(socketId) {
-        console.log(`Searching for: ${socketId} among ${this.users.length} users...`);
-        
         let found = this.users.find(u => u.socketId === socketId);
         
         return found;
     }
-
 }
 
 module.exports = new GameState();

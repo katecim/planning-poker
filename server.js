@@ -2,10 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
-const { PORT} = require('./src/constants');
-const { getDatabase } = require('./src/database');
 
+// Import constants, database, and game state 
+const { PORT, ALLOWED_EMOJIS, ESTIMATION_VALUES } = require('./src/constants');
+const { getDatabase } = require('./src/database');
 const gameState = require('./src/gameState');
+
+// Import handlers
 const registerUserHandler = require('./src/handlers/userHandler');
 const registerGameHandler = require('./src/handlers/gameHandler');
 const registerEmojiHandler = require('./src/handlers/emojiHandler');
@@ -18,36 +21,23 @@ app.use(express.static('public'));
 
 async function initApp() {
     const db = await getDatabase();
-    await db.read();
-
-    if (db.data && db.data.gameState) {
-        // Only copy users and revealed state
-        gameState.users = db.data.gameState.users || [];
-        gameState.revealed = db.data.gameState.revealed || false;
-    }
-
-    db.data.gameState = gameState;
-
-    // Clear up on server restart
-    gameState.users.forEach(u => {
-        u.socketId = null;
-        u.vote = null;
-    });
-
+    // Initialize game state (clear users and reset revealed state)
+    gameState.users = [];
     gameState.revealed = false;
 
+    db.data = { gameState };
     await db.write();
 
     io.on('connection', (socket) => {
-
+        // Send initial constants to the client
         socket.emit('init_constants', { 
-        deck: require('./src/constants').ESTIMATION_VALUES,
-        emojis: require('./src/constants').ALLOWED_EMOJIS
+            deck: ESTIMATION_VALUES,
+            emojis: ALLOWED_EMOJIS
         });
 
         registerUserHandler(io, socket, gameState, db);
         registerGameHandler(io, socket, gameState, db);
-        registerEmojiHandler(io, socket, gameState, db);
+        registerEmojiHandler(io, socket);
     });
 
     server.listen(PORT, () => console.log(`Planning Poker running on ${PORT}`));
