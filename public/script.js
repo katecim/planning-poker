@@ -46,7 +46,7 @@ socket.on('init_constants', ({ deck, emojis, currentBg }) => {
 
     if (currentBg) {
         document.body.className = `bg-${currentBg}`;
-        
+
         document.querySelectorAll('.bg-btn').forEach(btn => {
             const isActive = btn.getAttribute('data-bg') === currentBg;
             btn.classList.toggle('selected', isActive);
@@ -189,7 +189,7 @@ socket.on('reaction', (data) => {
     }, 4000);
 });
 
-// Suggest name on refresh if name in localStorage
+// Log in automatically on refresh
 window.onload = () => {
     const savedName = localStorage.getItem(NAME_KEY);
     const savedId = localStorage.getItem(STORAGE_KEY);

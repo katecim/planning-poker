@@ -16,9 +16,12 @@
         <div id="login-screen">
             <h1>Gopher Planning Poker</h1>
             <p style="margin-bottom: 25px; opacity: 0.8;">Enter and start planning.</p>
-            <input type="text" id="username" placeholder="What's your name?" autocomplete="off"/>
-            <br>
-            <button onclick="joinGame()">Enter Session</button>
+            
+            <form onsubmit="event.preventDefault(); joinGame();">
+                <input type="text" id="username" placeholder="What's your name?" autocomplete="off"/>
+                <br>
+                <button type="submit">Enter Session</button>
+            </form>
         </div>
 
         <div id="game-screen" class="hidden">
