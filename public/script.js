@@ -46,6 +46,11 @@ socket.on('init_constants', ({ deck, emojis, currentBg }) => {
 
     if (currentBg) {
         document.body.className = `bg-${currentBg}`;
+        
+        document.querySelectorAll('.bg-btn').forEach(btn => {
+            const isActive = btn.getAttribute('data-bg') === currentBg;
+            btn.classList.toggle('selected', isActive);
+        });
     }
 });
 
@@ -187,7 +192,10 @@ socket.on('reaction', (data) => {
 // Suggest name on refresh if name in localStorage
 window.onload = () => {
     const savedName = localStorage.getItem(NAME_KEY);
-    if (savedName) {
-        document.getElementById('username').value = savedName; 
-    }
+    const savedId = localStorage.getItem(STORAGE_KEY);
+
+    if (savedName && savedId) {
+        socket.emit('join', { name: savedName, persistentId: savedId });
+        toggleScreens(true);
+    } 
 };
