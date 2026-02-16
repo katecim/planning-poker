@@ -21,11 +21,19 @@ app.use(express.static('public'));
 
 async function initApp() {
     const db = await getDatabase();
-    // Initialize game state (clear users and reset revealed state)
-    gameState.users = [];
+    await db.read();
+
+    // Initialize game state
+    if (!db.data) {
+        db.data = { 
+            users: [], 
+            revealed: false 
+        };
+    }
+
+    gameState.users = db.data.users || [];
     gameState.revealed = false;
 
-    db.data = { gameState };
     await db.write();
 
     io.on('connection', (socket) => {

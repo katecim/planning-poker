@@ -3,7 +3,13 @@ const { ESTIMATION_VALUES } = require('../constants');
 module.exports = (io, socket, gameState, db) => {
     // Save and alert everyone    
     const broadcastUpdate = async () => {
+         db.data = { 
+            users: gameState.users, 
+            revealed: gameState.revealed 
+        };
+        
         await db.write();
+        
         io.emit('update', gameState);
     }
     
@@ -28,6 +34,7 @@ module.exports = (io, socket, gameState, db) => {
 
         if (user && user.isAdmin) {
             gameState.revealed = true;
+            
             await broadcastUpdate();
         } else {
         console.log(`Blocked unauthorized reveal attempt from: ${user ? user.name : 'Unknown'}`);

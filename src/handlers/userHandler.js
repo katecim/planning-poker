@@ -9,9 +9,26 @@ module.exports = (io, socket, gameState, db) => {
    
     // Save and alert everyone
     const broadcastUpdate = async () => {
+        db.data = { 
+            users: gameState.users, 
+            revealed: gameState.revealed 
+        };
+
         await db.write();
+
         io.emit('update', gameState);
     };
+
+    // Authenticate persistent ID
+    socket.on('authenticate', async ({ persistentId }) => {
+        const user = gameState.users.find(u => u.persistentId === persistentId);
+        
+        if (user) {
+            socket.emit('authenticated');
+        } else {
+            socket.emit('auth_failed');
+        }
+    });
     
     
     // Handle User Join
@@ -28,8 +45,10 @@ module.exports = (io, socket, gameState, db) => {
             // New user
             const duplicateCheck = gameState.users.find(u => u.socketId === socket.id);
             if (duplicateCheck) return;
+            
             // First user is Admin
             const isAdmin = gameState.users.length === 0;
+            
             user = { 
                 persistentId, 
                 socketId: socket.id, 
@@ -37,6 +56,7 @@ module.exports = (io, socket, gameState, db) => {
                 vote: null, 
                 isAdmin
             };
+            
             gameState.users.push(user);
         }
 

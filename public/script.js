@@ -1,5 +1,5 @@
 const socket = io();
-const STORAGE_KEY = 'persistent_id'; // unified key
+const STORAGE_KEY = 'persistent_id';
 const NAME_KEY = 'username';
 
 // Cache common elements
@@ -195,7 +195,11 @@ window.onload = () => {
     const savedId = localStorage.getItem(STORAGE_KEY);
 
     if (savedName && savedId) {
-        socket.emit('join', { name: savedName, persistentId: savedId });
-        toggleScreens(true);
-    } 
+        socket.emit('authenticate', { persistentId: savedId });
+
+        socket.on('authenticated', () => {
+            socket.emit('join', { name: savedName, persistentId: savedId });
+            toggleScreens(true);
+        });
+    }
 };
