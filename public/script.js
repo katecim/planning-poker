@@ -1,6 +1,13 @@
 const socket = io();
 const STORAGE_KEY = 'persistent_id';
 const NAME_KEY = 'username';
+const gooseHonk = new Audio('/assets/sounds/honk.mp3');
+gooseHonk.preload = 'auto';
+
+function playGooseHonk() {
+    gooseHonk.currentTime = 0;
+    gooseHonk.play().catch(() => {});
+}
 
 // Cache common elements
 const screens = {
@@ -158,6 +165,8 @@ function resetGame() {
 } 
 
 function sendReaction(emoji, event) {
+    if (emoji === '🪿') playGooseHonk();
+
     // Calculate the button's center position relative to the screen width
     const rect = event.target.getBoundingClientRect();
     const centerX = rect.left + (rect.width / 2);
