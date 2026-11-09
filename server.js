@@ -5,7 +5,7 @@ const { Server } = require("socket.io");
 
 // Import constants, database, and game state 
 const { PORT, ALLOWED_EMOJIS, ESTIMATION_VALUES } = require('./src/constants');
-const { getDatabase } = require('./src/database');
+const { getDatabase, normalizeDatabaseData } = require('./src/database');
 const gameState = require('./src/gameState');
 
 // Import handlers
@@ -23,17 +23,9 @@ async function initApp() {
     const db = await getDatabase();
     await db.read();
 
-    // Initialize game state
-    if (!db.data) {
-        db.data = { 
-            users: [], 
-            revealed: false 
-        };
-    }
-
-    gameState.users = db.data.users || [];
-    gameState.revealed = false;
-
+    db.data = normalizeDatabaseData(db.data);
+    gameState.users = db.data.users;
+    gameState.revealed = db.data.revealed;
     await db.write();
 
     io.on('connection', (socket) => {
