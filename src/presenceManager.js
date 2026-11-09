@@ -70,8 +70,17 @@ module.exports = ({
             socket.join(`user:${userId}`);
             cancelDisconnectCleanup(userId);
 
+            let stateChanged = false;
             if (!user.isOnline) {
                 user.isOnline = true;
+                stateChanged = true;
+            }
+
+            if (gameState.ensureOnlineAdmin()) {
+                stateChanged = true;
+            }
+
+            if (stateChanged) {
                 gameService.saveAndBroadcast().catch(error => console.error(error));
             }
 
