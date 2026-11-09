@@ -57,7 +57,7 @@ async function initApp() {
         socket.emit('init_constants', { 
             deck: ESTIMATION_VALUES,
             emojis: ALLOWED_EMOJIS,
-            currentBg: gameState.currentBg || 'casino'
+            currentBg: gameState.currentBg || 'halloween'
         });
 
         registerGameHandler(socket, gameState, gameService);

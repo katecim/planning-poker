@@ -389,6 +389,13 @@ body.bg-casino {
 body.bg-gopher {
     background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('./assets/images/gopher.jpg') center/cover no-repeat fixed;
 }
-body.bg-minimal {
-    background: radial-gradient(circle, #1e293b 0%, #0f172a 100%) fixed;
+body.bg-halloween {
+    background-color: #37342f;
+    background-image:
+        linear-gradient(rgba(20, 18, 15, 0.4), rgba(20, 18, 15, 0.4)),
+        url('./assets/images/halloween-animals.png');
+    background-position: center, center top;
+    background-size: cover, auto 100vh;
+    background-repeat: no-repeat, repeat;
+    background-attachment: fixed, fixed;
 }
