@@ -63,21 +63,41 @@ socket.on('update', (state) => {
 
     // Render Users & Calculate
     let [total, count] = [0, 0];
-    screens.userList.innerHTML = state.users.map(u => {
-        let display = u.vote === null ? '...' : '✔️';
+    screens.userList.replaceChildren();
+    state.users.forEach(user => {
+        let display = user.vote === null ? '...' : '✔️';
         
         if (state.revealed) {
-            display = u.vote ?? '-';
-            if (typeof u.vote === 'number') { total += u.vote; count++; }
+            display = user.vote ?? '-';
+            if (typeof user.vote === 'number') { total += user.vote; count++; }
         }
 
-        const badge = u.isAdmin ? '<span class="admin-badge">Guide</span>' : '';
-        const presence = u.isOnline ? '' : '<span class="presence-status">Offline</span>';
-        return `<li>
-            <span class="name">${u.name} ${badge} ${presence}</span>
-            <span class="vote ${state.revealed ? 'revealed' : ''}">${display}</span>
-        </li>`;
-    }).join('');
+        const row = document.createElement('li');
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = user.name;
+
+        if (user.isAdmin) {
+            const badge = document.createElement('span');
+            badge.className = 'admin-badge';
+            badge.textContent = 'Guide';
+            name.append(badge);
+        }
+
+        if (!user.isOnline) {
+            const presence = document.createElement('span');
+            presence.className = 'presence-status';
+            presence.textContent = 'Offline';
+            name.append(presence);
+        }
+
+        const vote = document.createElement('span');
+        vote.className = `vote ${state.revealed ? 'revealed' : ''}`;
+        vote.textContent = String(display);
+
+        row.append(name, vote);
+        screens.userList.append(row);
+    });
 
     // Results UI
     screens.results.classList.toggle('hidden', !state.revealed);
