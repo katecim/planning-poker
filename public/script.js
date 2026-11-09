@@ -17,7 +17,8 @@ const screens = {
     results: document.getElementById('results'),
     userList: document.getElementById('user-list'),
     status: document.getElementById('session-status'),
-    bgWidget: document.getElementById('admin-bg-widget')
+    bgWidget: document.getElementById('admin-bg-widget'),
+    emojiControls: document.getElementById('emoji-controls')
 };
 
 /** Helpers **/
@@ -25,6 +26,7 @@ const toggleScreens = (isLoggedIn) => {
     screens.login.classList.toggle('hidden', isLoggedIn);
     screens.game.classList.toggle('hidden', !isLoggedIn);
     screens.logout.classList.toggle('hidden', !isLoggedIn);
+    screens.emojiControls.classList.toggle('hidden', !isLoggedIn || !socket.connected);
 };
 
 // Background change
@@ -121,6 +123,14 @@ socket.on('bg_changed', (bgType) => {
     });
 });
 
+socket.on('connect', () => {
+    screens.emojiControls.classList.toggle('hidden', !currentUserId);
+});
+
+socket.on('disconnect', () => {
+    screens.emojiControls.classList.add('hidden');
+});
+
 /** Game Actions **/
 async function joinGame() {
     const name = document.getElementById('username').value;
@@ -194,6 +204,8 @@ function resetGame() {
 } 
 
 function sendReaction(emoji, event) {
+    if (!currentUserId || !socket.connected) return;
+
     if (emoji === '🪿') playGooseHonk();
 
     // Calculate the button's center position relative to the screen width
