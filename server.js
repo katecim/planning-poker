@@ -6,7 +6,7 @@ const { Server } = require("socket.io");
 
 // Import constants, database, and game state 
 const { PORT, ALLOWED_EMOJIS, ESTIMATION_VALUES, SECURITY } = require('./src/constants');
-const { getDatabase, normalizeDatabaseData } = require('./src/database');
+const { getDatabase } = require('./src/database');
 const gameState = require('./src/gameState');
 const createGameService = require('./src/gameService');
 const createPresenceManager = require('./src/presenceManager');
@@ -28,20 +28,9 @@ async function initApp() {
     const db = await getDatabase();
     await db.read();
 
-    db.data = normalizeDatabaseData(db.data);
-    gameState.users = db.data.users.filter(user =>
-        user && typeof user.id === 'string' &&
-        typeof user.sessionTokenHash === 'string' &&
-        user.sessionExpiresAt > Date.now()
-    );
-    gameState.users.forEach(user => {
-        user.isOnline = false;
-    });
+    db.data = { users: [], revealed: false };
+    gameState.users = db.data.users;
     gameState.revealed = db.data.revealed;
-    if (gameState.users.length && !gameState.users.some(user => user.isAdmin)) {
-        gameState.users[0].isAdmin = true;
-    }
-    db.data.users = gameState.users;
     await db.write();
 
     const gameService = createGameService({ io, gameState, db });
