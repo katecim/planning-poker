@@ -72,8 +72,9 @@ socket.on('update', (state) => {
         }
 
         const badge = u.isAdmin ? '<span class="admin-badge">Guide</span>' : '';
+        const presence = u.isOnline ? '' : '<span class="presence-status">Offline</span>';
         return `<li>
-            <span class="name">${u.name} ${badge}</span>
+            <span class="name">${u.name} ${badge} ${presence}</span>
             <span class="vote ${state.revealed ? 'revealed' : ''}">${display}</span>
         </li>`;
     }).join('');

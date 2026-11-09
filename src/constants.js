@@ -8,7 +8,8 @@ module.exports = {
     SECURITY: {
         MAX_NAME_LENGTH: 20,
         NAME_SANITIZATION_REGEX: /<[^>]*>?/gm,
-        REACTION_LOCK_TIMEOUT_MS: 500
+        REACTION_LOCK_TIMEOUT_MS: 500,
+        DISCONNECT_GRACE_PERIOD_MS: 30000
     },
 
 

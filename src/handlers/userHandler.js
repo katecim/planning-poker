@@ -36,7 +36,7 @@ const cookieOptions = req => ({
     maxAge: SESSION_TTL_MS
 });
 
-module.exports = (app, io, gameState, gameService) => {
+module.exports = (app, io, gameState, gameService, presenceManager) => {
     io.use((socket, next) => {
         const token = getTokenFromCookie(socket.handshake.headers.cookie);
         const user = getUserFromToken(gameState, token);
@@ -72,7 +72,8 @@ module.exports = (app, io, gameState, gameService) => {
             sessionExpiresAt: now + SESSION_TTL_MS,
             name: cleanName(req.body?.name),
             vote: null,
-            isAdmin: gameState.users.length === 0
+            isAdmin: gameState.users.length === 0,
+            isOnline: false
         };
 
         gameState.users.push(user);
@@ -87,13 +88,8 @@ module.exports = (app, io, gameState, gameService) => {
         const user = getUserFromToken(gameState, token);
 
         if (user) {
-            const userIndex = gameState.users.indexOf(user);
-            gameState.users.splice(userIndex, 1);
-
-            if (user.isAdmin && gameState.users.length > 0) {
-                gameState.users[0].isAdmin = true;
-            }
-
+            presenceManager.cancelDisconnectCleanup(user.id);
+            gameState.removeUserById(user.id);
             io.in(`user:${user.id}`).disconnectSockets(true);
             await gameService.saveAndBroadcast();
         }

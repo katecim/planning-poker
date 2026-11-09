@@ -4,10 +4,11 @@ const http = require('http');
 const { Server } = require("socket.io");
 
 // Import constants, database, and game state 
-const { PORT, ALLOWED_EMOJIS, ESTIMATION_VALUES } = require('./src/constants');
+const { PORT, ALLOWED_EMOJIS, ESTIMATION_VALUES, SECURITY } = require('./src/constants');
 const { getDatabase, normalizeDatabaseData } = require('./src/database');
 const gameState = require('./src/gameState');
 const createGameService = require('./src/gameService');
+const createPresenceManager = require('./src/presenceManager');
 
 // Import handlers
 const registerUserHandler = require('./src/handlers/userHandler');
@@ -32,6 +33,9 @@ async function initApp() {
         typeof user.sessionTokenHash === 'string' &&
         user.sessionExpiresAt > Date.now()
     );
+    gameState.users.forEach(user => {
+        user.isOnline = false;
+    });
     gameState.revealed = db.data.revealed;
     if (gameState.users.length && !gameState.users.some(user => user.isAdmin)) {
         gameState.users[0].isAdmin = true;
@@ -40,10 +44,16 @@ async function initApp() {
     await db.write();
 
     const gameService = createGameService({ io, gameState, db });
-    registerUserHandler(app, io, gameState, gameService);
+    const presenceManager = createPresenceManager({
+        io,
+        gameState,
+        gameService,
+        gracePeriodMs: SECURITY.DISCONNECT_GRACE_PERIOD_MS
+    });
+    registerUserHandler(app, io, gameState, gameService, presenceManager);
 
     io.on('connection', (socket) => {
-        socket.join(`user:${socket.data.userId}`);
+        presenceManager.handleConnection(socket);
         socket.use((packet, next) => {
             const user = gameState.findUserById(socket.data.userId);
             if (!user || user.sessionExpiresAt <= Date.now()) {
