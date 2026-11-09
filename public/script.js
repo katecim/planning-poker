@@ -1,8 +1,7 @@
-const socket = io();
-const STORAGE_KEY = 'persistent_id';
-const NAME_KEY = 'username';
+const socket = io({ autoConnect: false });
 const gooseHonk = new Audio('/assets/sounds/honk.mp3');
 gooseHonk.preload = 'auto';
+let currentUserId = null;
 
 function playGooseHonk() {
     gooseHonk.currentTime = 0;
@@ -22,15 +21,6 @@ const screens = {
 };
 
 /** Helpers **/
-const getPersistentId = () => {
-    let id = localStorage.getItem(STORAGE_KEY);
-    if (!id) {
-        id = `user_${Math.random().toString(36).slice(2, 11)}`;
-        localStorage.setItem(STORAGE_KEY, id);
-    }
-    return id;
-};
-
 const toggleScreens = (isLoggedIn) => {
     screens.login.classList.toggle('hidden', isLoggedIn);
     screens.game.classList.toggle('hidden', !isLoggedIn);
@@ -62,8 +52,7 @@ socket.on('init_constants', ({ deck, emojis, currentBg }) => {
 });
 
 socket.on('update', (state) => {
-    const myId = localStorage.getItem(STORAGE_KEY);
-    const me = state.users.find(u => u.persistentId === myId);
+    const me = state.users.find(user => user.id === currentUserId);
 
     // Sync UI
     if (me?.vote === null) {
@@ -112,20 +101,39 @@ socket.on('bg_changed', (bgType) => {
 });
 
 /** Game Actions **/
-function joinGame() {
+async function joinGame() {
     const name = document.getElementById('username').value;
-    if (!name) return alert("Please enter a name");
-    
-    localStorage.setItem(NAME_KEY, name);
-    socket.emit('join', { name, persistentId: getPersistentId() });
-    toggleScreens(true);
+    if (!name.trim()) return alert("Please enter a name");
+
+    try {
+        const response = await fetch('/api/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not join session');
+
+        currentUserId = result.user.id;
+        toggleScreens(true);
+        socket.connect();
+    } catch (error) {
+        alert(error.message);
+    }
 }
 
-function logout() {
+async function logout() {
     if (!confirm("Are you sure?")) return;
-    socket.emit('logout');
-    localStorage.clear();
-    window.location.reload();
+
+    try {
+        const response = await fetch('/api/session', { method: 'DELETE' });
+        if (!response.ok) throw new Error('Could not leave session');
+        socket.disconnect();
+        currentUserId = null;
+        toggleScreens(false);
+    } catch (error) {
+        alert(error.message);
+    }
 }
 
 function renderDeck(deckValues) {
@@ -198,17 +206,23 @@ socket.on('reaction', (data) => {
     }, 4000);
 });
 
-// Log in automatically on refresh
-window.onload = () => {
-    const savedName = localStorage.getItem(NAME_KEY);
-    const savedId = localStorage.getItem(STORAGE_KEY);
-
-    if (savedName && savedId) {
-        socket.emit('authenticate', { persistentId: savedId });
-
-        socket.on('authenticated', () => {
-            socket.emit('join', { name: savedName, persistentId: savedId });
-            toggleScreens(true);
-        });
+socket.on('connect_error', (error) => {
+    if (error.message === 'Unauthorized') {
+        currentUserId = null;
+        toggleScreens(false);
     }
-};
+});
+
+window.addEventListener('load', async () => {
+    try {
+        const response = await fetch('/api/session');
+        if (!response.ok) return;
+
+        const result = await response.json();
+        currentUserId = result.user.id;
+        toggleScreens(true);
+        socket.connect();
+    } catch {
+        toggleScreens(false);
+    }
+});

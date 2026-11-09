@@ -10,7 +10,7 @@ module.exports = (io, socket, gameState, db) => {
         
         await db.write();
         
-        io.emit('update', gameState);
+        io.emit('update', gameState.toPublicState());
     }
     
     // Handle Vote
@@ -20,7 +20,7 @@ module.exports = (io, socket, gameState, db) => {
             return;
         }
         
-        const user = gameState.findUserBySocketId(socket.id);
+        const user = gameState.findUserById(socket.data.userId);
         
         if (user) {
             user.vote = value;
@@ -30,7 +30,7 @@ module.exports = (io, socket, gameState, db) => {
 
     // Handle Reveal (Admin only)
     socket.on('reveal', async () => {
-        const user = gameState.findUserBySocketId(socket.id);
+        const user = gameState.findUserById(socket.data.userId);
 
         if (user && user.isAdmin) {
             gameState.revealed = true;
@@ -43,7 +43,7 @@ module.exports = (io, socket, gameState, db) => {
 
     // Handle Background Change (Admin only)
     socket.on('change_bg', (bgType) => {
-        const user = gameState.users.find(u => u.socketId === socket.id);
+        const user = gameState.findUserById(socket.data.userId);
         if (user && user.isAdmin) {
             gameState.currentBg = bgType;
             io.emit('bg_changed', bgType);
@@ -52,7 +52,7 @@ module.exports = (io, socket, gameState, db) => {
 
     // Handle New Session (Admin only)
     socket.on('reset', async () => {
-        const user = gameState.findUserBySocketId(socket.id);
+        const user = gameState.findUserById(socket.data.userId);
 
         if (user && user.isAdmin) {
             gameState.reset();

@@ -1,80 +1,110 @@
+const crypto = require('node:crypto');
 const { SECURITY } = require('../constants');
 
-module.exports = (io, socket, gameState, db) => {
-   // Sanitize name
-    const getCleanName = (name) => {
-        const clean = (name || "").replace(SECURITY.NAME_SANITIZATION_REGEX, '').trim();
-        return clean.substring(0, SECURITY.MAX_NAME_LENGTH) || "Anonymous Gopher";
+const COOKIE_NAME = 'planning_poker_session';
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+const hashToken = token => crypto.createHash('sha256').update(token).digest('hex');
+
+const getTokenFromCookie = cookieHeader => {
+    const cookie = (cookieHeader || '').split(';').map(value => value.trim())
+        .find(value => value.startsWith(`${COOKIE_NAME}=`));
+
+    return cookie ? cookie.slice(COOKIE_NAME.length + 1) : null;
+};
+
+const getUserFromToken = (gameState, token) => {
+    if (!token) return null;
+
+    const tokenHash = hashToken(token);
+    return gameState.users.find(user =>
+        user.sessionTokenHash === tokenHash && user.sessionExpiresAt > Date.now()
+    ) || null;
+};
+
+const cleanName = name => {
+    const clean = (typeof name === 'string' ? name : '')
+        .replace(SECURITY.NAME_SANITIZATION_REGEX, '').trim();
+    return clean.substring(0, SECURITY.MAX_NAME_LENGTH) || 'Anonymous Gopher';
+};
+
+const cookieOptions = req => ({
+    httpOnly: true,
+    secure: req.secure,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: SESSION_TTL_MS
+});
+
+module.exports = (app, io, gameState, db) => {
+    const saveAndBroadcast = async () => {
+        db.data = { users: gameState.users, revealed: gameState.revealed };
+        await db.write();
+        io.emit('update', gameState.toPublicState());
     };
-   
-    // Save and alert everyone
-    const broadcastUpdate = async () => {
-        db.data = { 
-            users: gameState.users, 
-            revealed: gameState.revealed 
+
+    io.use((socket, next) => {
+        const token = getTokenFromCookie(socket.handshake.headers.cookie);
+        const user = getUserFromToken(gameState, token);
+
+        if (!user) return next(new Error('Unauthorized'));
+
+        socket.data.userId = user.id;
+        next();
+    });
+
+    app.get('/api/session', (req, res) => {
+        const token = getTokenFromCookie(req.headers.cookie);
+        const user = getUserFromToken(gameState, token);
+
+        if (!user) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        res.json({ user: { id: user.id, name: user.name } });
+    });
+
+    app.post('/api/session', async (req, res) => {
+        const now = Date.now();
+        gameState.users = gameState.users.filter(user => user.sessionExpiresAt > now);
+        if (gameState.users.length && !gameState.users.some(user => user.isAdmin)) {
+            gameState.users[0].isAdmin = true;
+        }
+
+        const token = crypto.randomBytes(32).toString('base64url');
+        const user = {
+            id: crypto.randomUUID(),
+            sessionTokenHash: hashToken(token),
+            sessionExpiresAt: now + SESSION_TTL_MS,
+            name: cleanName(req.body?.name),
+            vote: null,
+            isAdmin: gameState.users.length === 0
         };
 
-        await db.write();
+        gameState.users.push(user);
+        await saveAndBroadcast();
 
-        io.emit('update', gameState);
-    };
-
-    // Authenticate persistent ID
-    socket.on('authenticate', async ({ persistentId }) => {
-        const user = gameState.users.find(u => u.persistentId === persistentId);
-        
-        if (user) {
-            socket.emit('authenticated');
-        } else {
-            socket.emit('auth_failed');
-        }
-    });
-    
-    
-    // Handle User Join
-    socket.on('join', async ({ name, persistentId }) => {
-        let cleanName = getCleanName(name);
-
-        let user = gameState.users.find(u => u.persistentId === persistentId);
-
-        if (user) {
-            // Update existing user (Reconnection)
-            user.socketId = socket.id;
-            user.name = cleanName;
-        } else {
-            // New user
-            const duplicateCheck = gameState.users.find(u => u.socketId === socket.id);
-            if (duplicateCheck) return;
-            
-            // First user is Admin
-            const isAdmin = gameState.users.length === 0;
-            
-            user = { 
-                persistentId, 
-                socketId: socket.id, 
-                name: cleanName, 
-                vote: null, 
-                isAdmin
-            };
-            
-            gameState.users.push(user);
-        }
-
-        await broadcastUpdate();
+        res.cookie(COOKIE_NAME, token, cookieOptions(req));
+        res.status(201).json({ user: { id: user.id, name: user.name } });
     });
 
-    socket.on('logout', async () => {
-        // Find and remove the user
-        const index = gameState.users.findIndex(u => u.socketId === socket.id);
-        if (index !== -1) {
-            const removedUser = gameState.users.splice(index, 1)[0];
+    app.delete('/api/session', async (req, res) => {
+        const token = getTokenFromCookie(req.headers.cookie);
+        const user = getUserFromToken(gameState, token);
 
-            // If the person leaving was the Admin, assign Admin to the next person in line
-            if (removedUser.isAdmin && gameState.users.length > 0) {
+        if (user) {
+            const userIndex = gameState.users.indexOf(user);
+            gameState.users.splice(userIndex, 1);
+
+            if (user.isAdmin && gameState.users.length > 0) {
                 gameState.users[0].isAdmin = true;
             }
 
-            await broadcastUpdate();
-            }
+            io.in(`user:${user.id}`).disconnectSockets(true);
+            await saveAndBroadcast();
+        }
+
+        res.clearCookie(COOKIE_NAME, cookieOptions(req));
+        res.sendStatus(204);
     });
-}
+};

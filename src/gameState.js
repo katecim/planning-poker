@@ -1,6 +1,6 @@
 class GameState {
     constructor() {
-        this.users = []; // { persistentId: 'uuid', socketId: 'sid', name: 'User', vote: null, isAdmin: boolean }
+        this.users = [];
         this.revealed = false;
     }
 
@@ -11,10 +11,15 @@ class GameState {
         });
     }
 
-    findUserBySocketId(socketId) {
-        let found = this.users.find(u => u.socketId === socketId);
-        
-        return found;
+    findUserById(id) {
+        return this.users.find(user => user.id === id);
+    }
+
+    toPublicState() {
+        return {
+            users: this.users.map(({ id, name, vote, isAdmin }) => ({ id, name, vote, isAdmin })),
+            revealed: this.revealed
+        };
     }
 }
 
