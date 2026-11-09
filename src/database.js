@@ -1,4 +1,5 @@
 const { JSONFilePreset } = require('lowdb/node');
+const path = require('node:path');
 
 const defaultData = { users: [], revealed: false };
 
@@ -14,7 +15,9 @@ function normalizeDatabaseData(data) {
 }
 
 async function getDatabase() {
-    const db = await JSONFilePreset('db.json', defaultData);
+    const dataDirectory = path.resolve(__dirname, '..', process.env.DATA_DIR || '.');
+    const databasePath = path.join(dataDirectory, 'db.json');
+    const db = await JSONFilePreset(databasePath, defaultData);
     return db;
 }
 
