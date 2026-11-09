@@ -36,13 +36,7 @@ const cookieOptions = req => ({
     maxAge: SESSION_TTL_MS
 });
 
-module.exports = (app, io, gameState, db) => {
-    const saveAndBroadcast = async () => {
-        db.data = { users: gameState.users, revealed: gameState.revealed };
-        await db.write();
-        io.emit('update', gameState.toPublicState());
-    };
-
+module.exports = (app, io, gameState, gameService) => {
     io.use((socket, next) => {
         const token = getTokenFromCookie(socket.handshake.headers.cookie);
         const user = getUserFromToken(gameState, token);
@@ -82,7 +76,7 @@ module.exports = (app, io, gameState, db) => {
         };
 
         gameState.users.push(user);
-        await saveAndBroadcast();
+        await gameService.saveAndBroadcast();
 
         res.cookie(COOKIE_NAME, token, cookieOptions(req));
         res.status(201).json({ user: { id: user.id, name: user.name } });
@@ -101,7 +95,7 @@ module.exports = (app, io, gameState, db) => {
             }
 
             io.in(`user:${user.id}`).disconnectSockets(true);
-            await saveAndBroadcast();
+            await gameService.saveAndBroadcast();
         }
 
         res.clearCookie(COOKIE_NAME, cookieOptions(req));

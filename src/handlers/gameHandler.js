@@ -1,18 +1,6 @@
 const { ESTIMATION_VALUES } = require('../constants');
 
-module.exports = (io, socket, gameState, db) => {
-    // Save and alert everyone    
-    const broadcastUpdate = async () => {
-         db.data = { 
-            users: gameState.users, 
-            revealed: gameState.revealed 
-        };
-        
-        await db.write();
-        
-        io.emit('update', gameState.toPublicState());
-    }
-    
+module.exports = (socket, gameState, gameService) => {
     // Handle Vote
     socket.on('vote', async (value) => {
         if (!ESTIMATION_VALUES.includes(value)) {
@@ -24,7 +12,7 @@ module.exports = (io, socket, gameState, db) => {
         
         if (user) {
             user.vote = value;
-            await broadcastUpdate();
+            await gameService.saveAndBroadcast();
         }
     });
 
@@ -35,7 +23,7 @@ module.exports = (io, socket, gameState, db) => {
         if (user && user.isAdmin) {
             gameState.revealed = true;
             
-            await broadcastUpdate();
+            await gameService.saveAndBroadcast();
         } else {
         console.log(`Blocked unauthorized reveal attempt from: ${user ? user.name : 'Unknown'}`);
     }
@@ -46,7 +34,7 @@ module.exports = (io, socket, gameState, db) => {
         const user = gameState.findUserById(socket.data.userId);
         if (user && user.isAdmin) {
             gameState.currentBg = bgType;
-            io.emit('bg_changed', bgType);
+            gameService.broadcastBackground(bgType);
         }
     });
 
@@ -56,7 +44,7 @@ module.exports = (io, socket, gameState, db) => {
 
         if (user && user.isAdmin) {
             gameState.reset();
-            await broadcastUpdate();
+            await gameService.saveAndBroadcast();
         } else {
         console.log(`Blocked unauthorized reset attempt from: ${user ? user.name : 'Unknown'}`);
     }

@@ -7,6 +7,7 @@ const { Server } = require("socket.io");
 const { PORT, ALLOWED_EMOJIS, ESTIMATION_VALUES } = require('./src/constants');
 const { getDatabase, normalizeDatabaseData } = require('./src/database');
 const gameState = require('./src/gameState');
+const createGameService = require('./src/gameService');
 
 // Import handlers
 const registerUserHandler = require('./src/handlers/userHandler');
@@ -38,7 +39,8 @@ async function initApp() {
     db.data.users = gameState.users;
     await db.write();
 
-    registerUserHandler(app, io, gameState, db);
+    const gameService = createGameService({ io, gameState, db });
+    registerUserHandler(app, io, gameState, gameService);
 
     io.on('connection', (socket) => {
         socket.join(`user:${socket.data.userId}`);
@@ -58,9 +60,9 @@ async function initApp() {
             currentBg: gameState.currentBg || 'casino'
         });
 
-        registerGameHandler(io, socket, gameState, db);
+        registerGameHandler(socket, gameState, gameService);
         registerEmojiHandler(io, socket);
-        socket.emit('update', gameState.toPublicState());
+        gameService.emitCurrentState(socket);
     });
 
     server.listen(PORT, () => console.log(`Planning Poker running on ${PORT}`));
