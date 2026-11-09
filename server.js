@@ -19,6 +19,51 @@ const registerEmojiHandler = require('./src/handlers/emojiHandler');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const DAD_JOKE_API_URL = 'https://icanhazdadjoke.com/';
+const DAD_JOKE_INTERVAL_MS = 15 * 60 * 1000;
+let dadJokeInterval = null;
+let dadJokeRequestInProgress = false;
+let dadJokeScheduleVersion = 0;
+
+function stopDadJokeSchedule() {
+    if (dadJokeInterval) clearInterval(dadJokeInterval);
+    dadJokeInterval = null;
+    dadJokeScheduleVersion++;
+}
+
+function startDadJokeSchedule() {
+    if (dadJokeInterval) return;
+
+    const scheduleVersion = dadJokeScheduleVersion;
+    dadJokeInterval = setInterval(async () => {
+        if (io.of('/').sockets.size === 0) {
+            stopDadJokeSchedule();
+            return;
+        }
+        if (dadJokeRequestInProgress) return;
+
+        dadJokeRequestInProgress = true;
+        try {
+            const response = await fetch(DAD_JOKE_API_URL, {
+                headers: { Accept: 'application/json' }
+            });
+            if (!response.ok) throw new Error(`Dad joke request failed: ${response.status}`);
+
+            const result = await response.json();
+            if (typeof result.joke !== 'string' || !result.joke.trim()) {
+                throw new Error('Dad joke response was empty');
+            }
+
+            if (scheduleVersion === dadJokeScheduleVersion && io.of('/').sockets.size > 0) {
+                io.emit('dad_joke', result.joke);
+            }
+        } catch (error) {
+            console.error(error.message);
+        } finally {
+            dadJokeRequestInProgress = false;
+        }
+    }, DAD_JOKE_INTERVAL_MS);
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '4kb' }));
@@ -44,6 +89,11 @@ async function initApp() {
 
     io.on('connection', (socket) => {
         presenceManager.handleConnection(socket);
+        startDadJokeSchedule();
+        socket.on('disconnect', () => {
+            if (io.of('/').sockets.size === 0) stopDadJokeSchedule();
+        });
+
         socket.use((packet, next) => {
             const user = gameState.findUserById(socket.data.userId);
             if (!user || user.sessionExpiresAt <= Date.now()) {

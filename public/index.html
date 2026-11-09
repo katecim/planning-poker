@@ -55,6 +55,15 @@
         <button onclick="logout()" class="logout-btn">Leave Session</button>
     </div>
 
+    <dialog id="dad-joke-dialog" class="dad-joke-dialog" aria-labelledby="dad-joke-title">
+        <div class="dad-joke-header">
+            <h2 id="dad-joke-title">Dad joke of the day</h2>
+            <button id="dad-joke-close" class="dad-joke-close" type="button" aria-label="Close dad joke">×</button>
+        </div>
+        <p id="dad-joke-status" class="dad-joke-status" role="status" aria-live="polite"></p>
+        <p id="dad-joke-text" class="dad-joke-text"></p>
+    </dialog>
+
     <div id="background-controls" class="bg-widget hidden">
         <button class="bg-btn selected" data-bg="halloween" title="Halloween">🎃</button>
         <button class="bg-btn" data-bg="gopher" title="gopher">🦫</button>

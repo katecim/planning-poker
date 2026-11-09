@@ -96,6 +96,10 @@ const screens = {
     emojiControls: document.getElementById('emoji-controls')
 };
 
+const dadJokeDialog = document.getElementById('dad-joke-dialog');
+const dadJokeStatus = document.getElementById('dad-joke-status');
+const dadJokeText = document.getElementById('dad-joke-text');
+
 /** Helpers **/
 const toggleScreens = (isLoggedIn) => {
     screens.login.classList.toggle('hidden', isLoggedIn);
@@ -104,6 +108,8 @@ const toggleScreens = (isLoggedIn) => {
     screens.emojiControls.classList.toggle('hidden', !isLoggedIn || !socket.connected);
     screens.backgroundControls.classList.toggle('hidden', !isLoggedIn || !socket.connected);
 };
+
+document.getElementById('dad-joke-close').addEventListener('click', () => dadJokeDialog.close());
 
 // Background change
 document.querySelectorAll('.bg-btn').forEach(btn => {
@@ -189,6 +195,14 @@ socket.on('bg_changed', (bgType) => {
     });
 });
 
+socket.on('dad_joke', (joke) => {
+    if (!currentUserId || !socket.connected || typeof joke !== 'string') return;
+
+    dadJokeStatus.textContent = '';
+    dadJokeText.textContent = joke;
+    if (!dadJokeDialog.open) dadJokeDialog.showModal();
+});
+
 socket.on('connect', () => {
     screens.emojiControls.classList.toggle('hidden', !currentUserId);
     screens.backgroundControls.classList.toggle('hidden', !currentUserId);
@@ -197,6 +211,7 @@ socket.on('connect', () => {
 socket.on('disconnect', () => {
     screens.emojiControls.classList.add('hidden');
     screens.backgroundControls.classList.add('hidden');
+    if (dadJokeDialog.open) dadJokeDialog.close();
 });
 
 /** Game Actions **/
