@@ -89,11 +89,10 @@ const screens = {
     login: document.getElementById('login-screen'),
     game: document.getElementById('game-screen'),
     logout: document.getElementById('logout-container'),
-    admin: document.getElementById('admin-controls'),
     results: document.getElementById('results'),
     userList: document.getElementById('user-list'),
     status: document.getElementById('session-status'),
-    bgWidget: document.getElementById('admin-bg-widget'),
+    backgroundControls: document.getElementById('background-controls'),
     emojiControls: document.getElementById('emoji-controls')
 };
 
@@ -103,6 +102,7 @@ const toggleScreens = (isLoggedIn) => {
     screens.game.classList.toggle('hidden', !isLoggedIn);
     screens.logout.classList.toggle('hidden', !isLoggedIn);
     screens.emojiControls.classList.toggle('hidden', !isLoggedIn || !socket.connected);
+    screens.backgroundControls.classList.toggle('hidden', !isLoggedIn || !socket.connected);
 };
 
 // Background change
@@ -136,9 +136,6 @@ socket.on('update', (state) => {
     if (me?.vote === null) {
         document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
     }
-    screens.admin.classList.toggle('hidden', !me?.isAdmin);
-    screens.bgWidget.classList.toggle('hidden', !me?.isAdmin);
-
     // Render Users & Calculate
     let [total, count] = [0, 0];
     screens.userList.replaceChildren();
@@ -154,13 +151,6 @@ socket.on('update', (state) => {
         const name = document.createElement('span');
         name.className = 'name';
         name.textContent = user.name;
-
-        if (user.isAdmin) {
-            const badge = document.createElement('span');
-            badge.className = 'admin-badge';
-            badge.textContent = 'Guide';
-            name.append(badge);
-        }
 
         if (!user.isOnline) {
             const presence = document.createElement('span');
@@ -201,10 +191,12 @@ socket.on('bg_changed', (bgType) => {
 
 socket.on('connect', () => {
     screens.emojiControls.classList.toggle('hidden', !currentUserId);
+    screens.backgroundControls.classList.toggle('hidden', !currentUserId);
 });
 
 socket.on('disconnect', () => {
     screens.emojiControls.classList.add('hidden');
+    screens.backgroundControls.classList.add('hidden');
 });
 
 /** Game Actions **/

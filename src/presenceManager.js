@@ -76,10 +76,6 @@ module.exports = ({
                 stateChanged = true;
             }
 
-            if (gameState.ensureOnlineAdmin()) {
-                stateChanged = true;
-            }
-
             if (stateChanged) {
                 gameService.saveAndBroadcast().catch(error => console.error(error));
             }

@@ -16,37 +16,30 @@ module.exports = (socket, gameState, gameService) => {
         }
     });
 
-    // Handle Reveal (Admin only)
+    // Handle Reveal
     socket.on('reveal', async () => {
         const user = gameState.findUserById(socket.data.userId);
+        if (!user) return;
 
-        if (user && user.isAdmin) {
-            gameState.revealed = true;
-            
-            await gameService.saveAndBroadcast();
-        } else {
-        console.log(`Blocked unauthorized reveal attempt from: ${user ? user.name : 'Unknown'}`);
-    }
+        gameState.revealed = true;
+        await gameService.saveAndBroadcast();
     });
 
-    // Handle Background Change (Admin only)
+    // Handle Background Change
     socket.on('change_bg', (bgType) => {
         const user = gameState.findUserById(socket.data.userId);
-        if (user && user.isAdmin) {
-            gameState.currentBg = bgType;
-            gameService.broadcastBackground(bgType);
-        }
+        if (!user) return;
+
+        gameState.currentBg = bgType;
+        gameService.broadcastBackground(bgType);
     });
 
-    // Handle New Session (Admin only)
+    // Handle New Round
     socket.on('reset', async () => {
         const user = gameState.findUserById(socket.data.userId);
+        if (!user) return;
 
-        if (user && user.isAdmin) {
-            gameState.reset();
-            await gameService.saveAndBroadcast();
-        } else {
-        console.log(`Blocked unauthorized reset attempt from: ${user ? user.name : 'Unknown'}`);
-    }
+        gameState.reset();
+        await gameService.saveAndBroadcast();
     });
 }

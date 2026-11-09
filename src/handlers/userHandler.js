@@ -61,7 +61,6 @@ module.exports = (app, io, gameState, gameService, presenceManager) => {
     app.post('/api/session', async (req, res) => {
         const now = Date.now();
         gameState.users = gameState.users.filter(user => user.sessionExpiresAt > now);
-        gameState.ensureOnlineAdmin();
 
         const token = crypto.randomBytes(32).toString('base64url');
         const user = {
@@ -70,7 +69,6 @@ module.exports = (app, io, gameState, gameService, presenceManager) => {
             sessionExpiresAt: now + SESSION_TTL_MS,
             name: cleanName(req.body?.name),
             vote: null,
-            isAdmin: gameState.users.length === 0,
             isOnline: false
         };
 
