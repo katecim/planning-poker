@@ -3,7 +3,7 @@ module.exports = {
     
     ESTIMATION_VALUES: [0, 1, 2, 3, 5, 8, 13, '🦫'],
 
-    ALLOWED_EMOJIS: ['🪿', '🎉', '💯', '🙅‍♀️', '☕'],
+    ALLOWED_EMOJIS: ['🪿', '👻', '🙀', '🎅'],
 
     SECURITY: {
         MAX_NAME_LENGTH: 20,

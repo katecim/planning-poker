@@ -1,11 +1,87 @@
 const socket = io({ autoConnect: false });
 const gooseHonk = new Audio('/assets/sounds/honk.mp3');
 gooseHonk.preload = 'auto';
+const reactionSounds = {
+    '👻': new Audio('/assets/sounds/ghost-wooo.mp3'),
+    '🙀': new Audio('/assets/sounds/cat-meow.mp3'),
+    '🎅': new Audio('/assets/sounds/santaclaus_hohoho.mp3')
+};
+Object.values(reactionSounds).forEach(sound => {
+    sound.preload = 'auto';
+});
 let currentUserId = null;
+const reactionSoundTimers = new Map();
+const reactionPlaybackIds = new Map();
+const reactionPlaybackSegments = {
+    '👻': { start: 0, duration: 2.8, fadeDuration: 0.5 },
+    '🎅': { start: 4, duration: 3 }
+};
 
 function playGooseHonk() {
     gooseHonk.currentTime = 0;
     gooseHonk.play().catch(() => {});
+}
+
+function scheduleReactionStop(sound, emoji, playbackId, segment) {
+    const fadeDuration = segment.fadeDuration || 0;
+    const timer = setTimeout(() => {
+        if (reactionPlaybackIds.get(emoji) !== playbackId) return;
+
+        if (!fadeDuration) {
+            sound.pause();
+            sound.currentTime = segment.start;
+            reactionSoundTimers.delete(emoji);
+            return;
+        }
+
+        const fadeStartedAt = performance.now();
+        const startingVolume = sound.volume;
+        const fadeFrame = now => {
+            if (reactionPlaybackIds.get(emoji) !== playbackId) return;
+
+            const progress = Math.min((now - fadeStartedAt) / (fadeDuration * 1000), 1);
+            sound.volume = startingVolume * (1 - progress);
+
+            if (progress === 1) {
+                sound.pause();
+                sound.currentTime = segment.start;
+                sound.volume = 1;
+                reactionSoundTimers.delete(emoji);
+            } else {
+                requestAnimationFrame(fadeFrame);
+            }
+        };
+
+        requestAnimationFrame(fadeFrame);
+    }, (segment.duration - fadeDuration) * 1000);
+
+    reactionSoundTimers.set(emoji, timer);
+}
+
+function playReactionSound(emoji) {
+    const sound = reactionSounds[emoji];
+    if (!sound) return;
+
+    const existingTimer = reactionSoundTimers.get(emoji);
+    if (existingTimer) clearTimeout(existingTimer);
+
+    const playbackId = (reactionPlaybackIds.get(emoji) || 0) + 1;
+    reactionPlaybackIds.set(emoji, playbackId);
+    const segment = reactionPlaybackSegments[emoji];
+
+    sound.pause();
+    sound.volume = 1;
+    sound.currentTime = segment?.start || 0;
+    const playback = sound.play();
+
+    if (segment) {
+        playback.then(() => {
+            if (reactionPlaybackIds.get(emoji) !== playbackId) return;
+            scheduleReactionStop(sound, emoji, playbackId, segment);
+        }).catch(() => {});
+    } else {
+        playback.catch(() => {});
+    }
 }
 
 // Cache common elements
@@ -206,7 +282,11 @@ function resetGame() {
 function sendReaction(emoji, event) {
     if (!currentUserId || !socket.connected) return;
 
-    if (emoji === '🪿') playGooseHonk();
+    if (emoji === '🪿') {
+        playGooseHonk();
+    } else {
+        playReactionSound(emoji);
+    }
 
     // Calculate the button's center position relative to the screen width
     const rect = event.target.getBoundingClientRect();
