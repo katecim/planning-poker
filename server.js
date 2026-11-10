@@ -115,8 +115,7 @@ async function initApp() {
         // Send initial constants to the client
         socket.emit('init_constants', { 
             deck: ESTIMATION_VALUES,
-            emojis: ALLOWED_EMOJIS,
-            currentBg: gameState.currentBg || 'halloween'
+            emojis: ALLOWED_EMOJIS
         });
 
         registerGameHandler(socket, gameState, gameService);

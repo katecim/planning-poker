@@ -7,9 +7,5 @@ module.exports = ({ io, gameState, db }) => ({
 
     emitCurrentState(socket) {
         socket.emit('update', gameState.toPublicState());
-    },
-
-    broadcastBackground(bgType) {
-        io.emit('bg_changed', bgType);
     }
 });

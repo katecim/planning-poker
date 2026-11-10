@@ -99,6 +99,8 @@ const screens = {
 const dadJokeDialog = document.getElementById('dad-joke-dialog');
 const dadJokeStatus = document.getElementById('dad-joke-status');
 const dadJokeText = document.getElementById('dad-joke-text');
+const BACKGROUND_STORAGE_KEY = 'planning_poker_background';
+const ALLOWED_BACKGROUNDS = ['halloween', 'gopher', 'casino'];
 
 /** Helpers **/
 const toggleScreens = (isLoggedIn) => {
@@ -109,30 +111,30 @@ const toggleScreens = (isLoggedIn) => {
     screens.backgroundControls.classList.toggle('hidden', !isLoggedIn || !socket.connected);
 };
 
+const applyBackground = bgType => {
+    if (!ALLOWED_BACKGROUNDS.includes(bgType)) return;
+
+    document.body.className = `bg-${bgType}`;
+    document.querySelectorAll('.bg-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.getAttribute('data-bg') === bgType);
+    });
+    localStorage.setItem(BACKGROUND_STORAGE_KEY, bgType);
+};
+
 document.getElementById('dad-joke-close').addEventListener('click', () => dadJokeDialog.close());
 
-// Background change
+// Client-only background preference
 document.querySelectorAll('.bg-btn').forEach(btn => {
     btn.onclick = () => {
         const bgType = btn.getAttribute('data-bg');
-        
-        socket.emit('change_bg', bgType)
+        applyBackground(bgType);
     };
 });
 
 /** Socket Listeners **/
-socket.on('init_constants', ({ deck, emojis, currentBg }) => {
+socket.on('init_constants', ({ deck, emojis }) => {
     renderDeck(deck);
     renderEmojiButtons(emojis);
-
-    if (currentBg) {
-        document.body.className = `bg-${currentBg}`;
-
-        document.querySelectorAll('.bg-btn').forEach(btn => {
-            const isActive = btn.getAttribute('data-bg') === currentBg;
-            btn.classList.toggle('selected', isActive);
-        });
-    }
 });
 
 socket.on('update', (state) => {
@@ -183,16 +185,6 @@ socket.on('update', (state) => {
         screens.status.innerText = "Voting in progress...";
         screens.status.style.color = "rgba(255,255,255,0.7)";
     }
-});
-
-// Background change listener
-socket.on('bg_changed', (bgType) => {
-    document.body.className = `bg-${bgType}`;
-
-    document.querySelectorAll('.bg-btn').forEach(btn => {
-        const isActive = btn.getAttribute('data-bg') === bgType;
-        btn.classList.toggle('selected', isActive);
-    });
 });
 
 socket.on('dad_joke', (joke) => {
@@ -334,6 +326,8 @@ socket.on('connect_error', (error) => {
 });
 
 window.addEventListener('load', async () => {
+    applyBackground(localStorage.getItem(BACKGROUND_STORAGE_KEY) || 'halloween');
+
     try {
         const response = await fetch('/api/session');
         if (!response.ok) return;

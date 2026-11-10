@@ -25,15 +25,6 @@ module.exports = (socket, gameState, gameService) => {
         await gameService.saveAndBroadcast();
     });
 
-    // Handle Background Change
-    socket.on('change_bg', (bgType) => {
-        const user = gameState.findUserById(socket.data.userId);
-        if (!user) return;
-
-        gameState.currentBg = bgType;
-        gameService.broadcastBackground(bgType);
-    });
-
     // Handle New Round
     socket.on('reset', async () => {
         const user = gameState.findUserById(socket.data.userId);
