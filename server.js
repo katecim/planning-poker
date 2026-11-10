@@ -20,23 +20,31 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const DAD_JOKE_API_URL = 'https://icanhazdadjoke.com/';
-const DAD_JOKE_INTERVAL_MS = 15 * 60 * 1000;
-let dadJokeInterval = null;
+const MIN_DAD_JOKE_PARTICIPANTS = 2;
+const DAD_JOKE_DELAY_MS = 10 * 60 * 1000;
+let dadJokeTimeout = null;
 let dadJokeRequestInProgress = false;
 let dadJokeScheduleVersion = 0;
+let dadJokeSent = false;
 
 function stopDadJokeSchedule() {
-    if (dadJokeInterval) clearInterval(dadJokeInterval);
-    dadJokeInterval = null;
+    if (dadJokeTimeout) clearTimeout(dadJokeTimeout);
+    dadJokeTimeout = null;
     dadJokeScheduleVersion++;
 }
 
 function startDadJokeSchedule() {
-    if (dadJokeInterval) return;
+    if (
+        dadJokeSent
+        || dadJokeTimeout
+        || io.of('/').sockets.size < MIN_DAD_JOKE_PARTICIPANTS
+    ) return;
 
     const scheduleVersion = dadJokeScheduleVersion;
-    dadJokeInterval = setInterval(async () => {
-        if (io.of('/').sockets.size === 0) {
+    dadJokeTimeout = setTimeout(async () => {
+        dadJokeTimeout = null;
+
+        if (io.of('/').sockets.size < MIN_DAD_JOKE_PARTICIPANTS) {
             stopDadJokeSchedule();
             return;
         }
@@ -55,6 +63,7 @@ function startDadJokeSchedule() {
             }
 
             if (scheduleVersion === dadJokeScheduleVersion && io.of('/').sockets.size > 0) {
+                dadJokeSent = true;
                 io.emit('dad_joke', result.joke);
             }
         } catch (error) {
@@ -62,7 +71,7 @@ function startDadJokeSchedule() {
         } finally {
             dadJokeRequestInProgress = false;
         }
-    }, DAD_JOKE_INTERVAL_MS);
+    }, DAD_JOKE_DELAY_MS);
 }
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -91,7 +100,7 @@ async function initApp() {
         presenceManager.handleConnection(socket);
         startDadJokeSchedule();
         socket.on('disconnect', () => {
-            if (io.of('/').sockets.size === 0) stopDadJokeSchedule();
+            if (io.of('/').sockets.size < MIN_DAD_JOKE_PARTICIPANTS) stopDadJokeSchedule();
         });
 
         socket.use((packet, next) => {
