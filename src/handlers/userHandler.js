@@ -36,7 +36,22 @@ const cookieOptions = req => ({
     maxAge: SESSION_TTL_MS
 });
 
-module.exports = (app, io, gameState, gameService, presenceManager) => {
+const normalizeSecretName = name => typeof name === 'string'
+    ? name.replace(/\s/g, '').toLowerCase()
+    : '';
+
+const isSecretQuizUser = user => {
+    const configuredName = process.env.SECRET_USER_NAME;
+    return Boolean(configuredName)
+        && normalizeSecretName(user?.name) === normalizeSecretName(configuredName);
+};
+
+const getAuthenticatedUser = (req, gameState) => {
+    const token = getTokenFromCookie(req.headers.cookie);
+    return getUserFromToken(gameState, token);
+};
+
+const registerUserHandler = (app, io, gameState, gameService, presenceManager) => {
     io.use((socket, next) => {
         const token = getTokenFromCookie(socket.handshake.headers.cookie);
         const user = getUserFromToken(gameState, token);
@@ -48,14 +63,16 @@ module.exports = (app, io, gameState, gameService, presenceManager) => {
     });
 
     app.get('/api/session', (req, res) => {
-        const token = getTokenFromCookie(req.headers.cookie);
-        const user = getUserFromToken(gameState, token);
+        const user = getAuthenticatedUser(req, gameState);
 
         if (!user) {
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
-        res.json({ user: { id: user.id, name: user.name } });
+        res.json({
+            user: { id: user.id, name: user.name },
+            features: { secretQuiz: isSecretQuizUser(user) }
+        });
     });
 
     app.post('/api/session', async (req, res) => {
@@ -76,7 +93,10 @@ module.exports = (app, io, gameState, gameService, presenceManager) => {
         await gameService.saveAndBroadcast();
 
         res.cookie(COOKIE_NAME, token, cookieOptions(req));
-        res.status(201).json({ user: { id: user.id, name: user.name } });
+        res.status(201).json({
+            user: { id: user.id, name: user.name },
+            features: { secretQuiz: isSecretQuizUser(user) }
+        });
     });
 
     app.delete('/api/session', async (req, res) => {
@@ -94,3 +114,8 @@ module.exports = (app, io, gameState, gameService, presenceManager) => {
         res.sendStatus(204);
     });
 };
+
+registerUserHandler.getAuthenticatedUser = getAuthenticatedUser;
+registerUserHandler.isSecretQuizUser = isSecretQuizUser;
+
+module.exports = registerUserHandler;

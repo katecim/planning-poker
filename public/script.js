@@ -101,6 +101,31 @@ const dadJokeStatus = document.getElementById('dad-joke-status');
 const dadJokeText = document.getElementById('dad-joke-text');
 const BACKGROUND_STORAGE_KEY = 'planning_poker_background';
 const ALLOWED_BACKGROUNDS = ['halloween', 'gopher', 'casino'];
+let secretQuizScriptPromise = null;
+
+const setSecretQuizAccess = hasAccess => {
+    if (!hasAccess) {
+        window.dispatchEvent(new CustomEvent('secret-quiz-access', { detail: false }));
+        return;
+    }
+
+    if (!secretQuizScriptPromise) {
+        secretQuizScriptPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = '/secret-quiz.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.body.append(script);
+        }).catch(error => {
+            secretQuizScriptPromise = null;
+            console.error('Could not load secret quiz', error);
+        });
+    }
+
+    return secretQuizScriptPromise.then(() => {
+        window.dispatchEvent(new CustomEvent('secret-quiz-access', { detail: true }));
+    });
+};
 
 /** Helpers **/
 const toggleScreens = (isLoggedIn) => {
@@ -221,6 +246,7 @@ async function joinGame() {
         if (!response.ok) throw new Error(result.error || 'Could not join session');
 
         currentUserId = result.user.id;
+        setSecretQuizAccess(result.features?.secretQuiz === true);
         toggleScreens(true);
         socket.connect();
     } catch (error) {
@@ -236,6 +262,7 @@ async function logout() {
         if (!response.ok) throw new Error('Could not leave session');
         socket.disconnect();
         currentUserId = null;
+        setSecretQuizAccess(false);
         toggleScreens(false);
     } catch (error) {
         alert(error.message);
@@ -321,6 +348,7 @@ socket.on('reaction', (data) => {
 socket.on('connect_error', (error) => {
     if (error.message === 'Unauthorized') {
         currentUserId = null;
+        setSecretQuizAccess(false);
         toggleScreens(false);
     }
 });
@@ -334,6 +362,7 @@ window.addEventListener('load', async () => {
 
         const result = await response.json();
         currentUserId = result.user.id;
+        setSecretQuizAccess(result.features?.secretQuiz === true);
         toggleScreens(true);
         socket.connect();
     } catch {

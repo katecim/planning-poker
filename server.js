@@ -96,6 +96,17 @@ async function initApp() {
     });
     registerUserHandler(app, io, gameState, gameService, presenceManager);
 
+    app.get('/secret-quiz.js', (req, res) => {
+        const user = registerUserHandler.getAuthenticatedUser(req, gameState);
+        if (!user || !registerUserHandler.isSecretQuizUser(user)) {
+            return res.sendStatus(404);
+        }
+
+        res.sendFile(path.join(__dirname, 'private', 'secret-quiz.js'), {
+            headers: { 'Cache-Control': 'no-store' }
+        });
+    });
+
     io.on('connection', (socket) => {
         presenceManager.handleConnection(socket);
         startDadJokeSchedule();
