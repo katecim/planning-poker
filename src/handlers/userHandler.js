@@ -40,11 +40,15 @@ const normalizeSecretName = name => typeof name === 'string'
     ? name.replace(/\s/g, '').toLowerCase()
     : '';
 
-const isSecretQuizUser = user => {
+const matchesConfiguredSecretName = name => {
     const configuredName = process.env.SECRET_USER_NAME;
     return Boolean(configuredName)
-        && normalizeSecretName(user?.name) === normalizeSecretName(configuredName);
+        && normalizeSecretName(name) === normalizeSecretName(configuredName);
 };
+
+let secretQuizClaimed = false;
+
+const isSecretQuizUser = user => user?.hasSecretQuizAccess === true;
 
 const getAuthenticatedUser = (req, gameState) => {
     const token = getTokenFromCookie(req.headers.cookie);
@@ -86,8 +90,14 @@ const registerUserHandler = (app, io, gameState, gameService, presenceManager) =
             sessionExpiresAt: now + SESSION_TTL_MS,
             name: cleanName(req.body?.name),
             vote: null,
-            isOnline: false
+            isOnline: false,
+            hasSecretQuizAccess: false
         };
+
+        if (!secretQuizClaimed && matchesConfiguredSecretName(user.name)) {
+            user.hasSecretQuizAccess = true;
+            secretQuizClaimed = true;
+        }
 
         gameState.users.push(user);
         await gameService.saveAndBroadcast();
